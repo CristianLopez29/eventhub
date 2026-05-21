@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+>
+    <php>
+        <env name="KERNEL_CLASS" value="App\Kernel"/>
+        <env name="APP_ENV" value="test"/>
+        <env name="APP_DEBUG" value="1"/>
+        <env name="DATABASE_URL" value="mysql://root:root@mysql:3306/eventhub?serverVersion=8.0.32&amp;charset=utf8mb4"/>
+    </php>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/EventIntegration/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/EventIntegration/Integration</directory>
+        </testsuite>
+        <testsuite name="Acceptance">
+            <directory>tests/EventIntegration/Acceptance</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+</phpunit>

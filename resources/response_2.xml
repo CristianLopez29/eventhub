@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<planList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0" xsi:noNamespaceSchemaLocation="planList.xsd">
+   <output>
+      <base_plan base_plan_id="1001" sell_mode="online" title="Rock Festival 2024">
+         <plan plan_start_date="2024-08-15T19:00:00" plan_end_date="2024-08-15T23:00:00" plan_id="1001" sell_from="2024-01-01T00:00:00" sell_to="2024-08-15T18:00:00" sold_out="false">
+            <zone zone_id="10" capacity="480" price="45.00" name="General Admission" numbered="false" />
+            <zone zone_id="11" capacity="180" price="85.00" name="VIP Front Row" numbered="true" />
+            <zone zone_id="12" capacity="45" price="150.00" name="Backstage Pass" numbered="true" />
+         </plan>
+      </base_plan>
+      <base_plan base_plan_id="1002" sell_mode="online" organizer_company_id="3" title="Jazz Night Special">
+         <plan plan_start_date="2024-09-20T20:00:00" plan_end_date="2024-09-20T22:30:00" plan_id="2001" sell_from="2024-03-01T00:00:00" sell_to="2024-09-20T19:00:00" sold_out="false">
+            <zone zone_id="20" capacity="120" price="35.00" name="Main Floor" numbered="true" />
+         </plan>
+      </base_plan>
+      <base_plan base_plan_id="1003" sell_mode="online" organizer_company_id="5" title="Symphony Orchestra Gala">
+         <plan plan_start_date="2024-10-05T18:00:00" plan_end_date="2024-10-05T21:00:00" plan_id="3001" sell_from="2024-04-01T00:00:00" sell_to="2024-10-05T17:00:00" sold_out="false">
+            <zone zone_id="30" capacity="0" price="60.00" name="Orchestra Section" numbered="true" />
+            <zone zone_id="31" capacity="130" price="40.00" name="Balcony" numbered="true" />
+         </plan>
+      </base_plan>
+      <base_plan base_plan_id="2001" sell_mode="offline" organizer_company_id="7" title="Corporate Training Session">
+         <plan plan_start_date="2024-11-10T09:00:00" plan_end_date="2024-11-10T17:00:00" plan_id="4001" sell_from="2024-05-01T00:00:00" sell_to="2024-11-09T18:00:00" sold_out="false">
+            <zone zone_id="40" capacity="80" price="0.00" name="Conference Room A" numbered="false" />
+         </plan>
+      </base_plan>
+   </output>
+</planList>

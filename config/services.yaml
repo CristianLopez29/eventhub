@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+parameters:
+    provider_events_url: '%env(PROVIDER_EVENTS_URL)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    App\EventIntegration\Application\:
+        resource: '../src/EventIntegration/Application/**/*'
+        exclude:
+            - '../src/EventIntegration/Application/DTOs'
+
+    App\EventIntegration\Infrastructure\Console\:
+        resource: '../src/EventIntegration/Infrastructure/Console/*'
+        tags:
+            - { name: console.command }
+
+    App\EventIntegration\Infrastructure\Controllers\:
+        resource: '../src/EventIntegration/Infrastructure/Controllers/*'
+        tags:
+            - { name: controller.service_arguments }
+
+    App\EventIntegration\Infrastructure\Listeners\ExceptionListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.exception }
+
+    App\EventIntegration\Infrastructure\Repositories\DoctrineEventRepository:
+        public: true
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+
+    App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository:
+        public: true
+        decorates: App\EventIntegration\Infrastructure\Repositories\DoctrineEventRepository
+        arguments:
+            $innerRepository: '@.inner'
+            $cacheAdapter: '@app.event_integration.cache_adapter'
+
+    app.event_integration.redis_connection:
+        class: Redis
+        factory: ['Symfony\Component\Cache\Adapter\RedisAdapter', 'createConnection']
+        arguments:
+            - '%env(REDIS_URL)%'
+
+    app.event_integration.cache_adapter:
+        class: Symfony\Component\Cache\Adapter\RedisAdapter
+        arguments:
+            $redis: '@app.event_integration.redis_connection'
+            $namespace: 'event_integration'
+
+    App\EventIntegration\Domain\Repositories\EventRepositoryInterface:
+        public: true
+        alias: App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository
+
+    App\EventIntegration\Infrastructure\Repositories\ProviderClient:
+        arguments:
+            $providerUrl: '%provider_events_url%'

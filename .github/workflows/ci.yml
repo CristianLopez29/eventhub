@@ -1,0 +1,66 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  tests:
+    name: Tests & Static Analysis
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: eventhub
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/eventhub?serverVersion=8.0.32&charset=utf8mb4
+      REDIS_URL: redis://127.0.0.1:6379
+      APP_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, ctype, iconv, pdo_mysql, redis
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Generate JWT keys
+        env:
+          JWT_PASSPHRASE: ${{ secrets.JWT_PASSPHRASE || '1d004a1e052a58cbe371e67617622e6ca476d895349e9a395db885a29d62d18a' }}
+        run: |
+          mkdir -p config/jwt
+          openssl genrsa -out config/jwt/private.pem -aes256 -passout pass:${JWT_PASSPHRASE} 4096
+          openssl rsa -pubout -in config/jwt/private.pem -out config/jwt/public.pem -passin pass:${JWT_PASSPHRASE}
+
+      - name: Setup test database
+        run: |
+          bin/console doctrine:database:create --if-not-exists
+          bin/console doctrine:migrations:migrate --no-interaction
+
+      - name: Run PHPUnit
+        run: bin/phpunit
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse src -l 9 --memory-limit=512M
