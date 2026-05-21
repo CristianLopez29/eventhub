@@ -17,7 +17,6 @@
 
 # Archivos generados por Symfony recipes / Composer (no necesarios en el repo)
 /symfony.lock
-/composer.lock
 /config/reference.php
 /.editorconfig
 /.env.dev

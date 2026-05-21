@@ -11,6 +11,8 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
         "lexik/jwt-authentication-bundle": "*",
+        "nelmio/api-doc-bundle": "^5.10",
+        "symfony/asset": "8.0.*",
         "symfony/console": "^8.0",
         "symfony/dotenv": "^8.0",
         "symfony/flex": "^2",
@@ -20,9 +22,11 @@
         "symfony/runtime": "^8.0",
         "symfony/security-bundle": "8.0.*",
         "symfony/serializer": "^8.0",
+        "symfony/twig-bundle": "8.0.*",
         "symfony/uid": "8.0.*",
         "symfony/validator": "^8.0",
         "symfony/yaml": "^8.0",
+        "twig/extra-bundle": "^3.24",
         "webmozart/assert": "^1.11"
     },
     "require-dev": {

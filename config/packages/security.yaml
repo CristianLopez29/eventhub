@@ -11,6 +11,9 @@ security:
         dev:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+        swagger:
+            pattern: ^/api/doc
+            security: false
         login:
             pattern: ^/login
             stateless: true
@@ -27,6 +30,7 @@ security:
     access_control:
         - { path: ^/login, roles: PUBLIC_ACCESS }
         - { path: ^/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/doc, roles: PUBLIC_ACCESS }
         - { path: ^/, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

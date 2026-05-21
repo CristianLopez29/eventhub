@@ -1,0 +1,57 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: EventHub API
+            description: |
+                REST API for querying events from the EventHub provider feed.
+                All endpoints except `/login` require a JWT Bearer token.
+            version: 1.0.0
+        components:
+            securitySchemes:
+                BearerAuth:
+                    type: http
+                    scheme: bearer
+                    bearerFormat: JWT
+        security:
+            - BearerAuth: []
+        paths:
+            /login:
+                post:
+                    tags:
+                        - Auth
+                    summary: Obtain a JWT token
+                    security: []
+                    requestBody:
+                        required: true
+                        content:
+                            application/json:
+                                schema:
+                                    type: object
+                                    required: [username, password]
+                                    properties:
+                                        username:
+                                            type: string
+                                            example: admin
+                                        password:
+                                            type: string
+                                            format: password
+                                            example: secret123
+                    responses:
+                        '200':
+                            description: JWT token issued
+                            content:
+                                application/json:
+                                    schema:
+                                        type: object
+                                        properties:
+                                            token:
+                                                type: string
+                                                example: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...
+                        '401':
+                            description: Invalid credentials
+
+    areas:
+        default:
+            path_patterns:
+                - ^/(?!_)
+            host_patterns: []
