@@ -30,6 +30,7 @@ jobs:
     env:
       DATABASE_URL: mysql://root:root@127.0.0.1:3306/eventhub?serverVersion=8.0.32&charset=utf8mb4
       REDIS_URL: redis://127.0.0.1:6379
+      MESSENGER_TRANSPORT_DSN: redis://127.0.0.1:6379/messages
       APP_ENV: test
 
     steps:
@@ -56,11 +57,11 @@ jobs:
 
       - name: Setup test database
         run: |
-          bin/console doctrine:database:create --if-not-exists
-          bin/console doctrine:migrations:migrate --no-interaction
+          php bin/console doctrine:database:create --if-not-exists
+          php bin/console doctrine:migrations:migrate --no-interaction
 
       - name: Run PHPUnit
-        run: bin/phpunit
+        run: php bin/phpunit
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src -l 9 --memory-limit=512M
