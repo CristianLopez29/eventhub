@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\EventIntegration\Unit\Infrastructure\Repositories;
 
+use App\EventIntegration\Domain\Entities\Event;
+use App\EventIntegration\Domain\ValueObjects\EventId;
 use App\EventIntegration\Infrastructure\Repositories\ProviderClient;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -65,48 +67,40 @@ final class ProviderClientTest extends TestCase
         $xml = file_get_contents(__DIR__ . '/../../../../../resources/response_1.xml');
         self::assertNotFalse($xml);
 
-        $responses = [
-            new MockResponse($xml),
-        ];
-
-        $httpClient = new MockHttpClient($responses);
+        $httpClient = new MockHttpClient([new MockResponse($xml)]);
         $client = new ProviderClient('http://provider:8080/events.xml', $this->logger, $httpClient);
 
         $events = $client->fetchEvents();
 
-        /** @var array<int, array<string, mixed>> $events */
+        /** @var Event[] $events */
         self::assertCount(4, $events);
 
-        self::assertSame('1001', $events[0]['base_event_id']);
-        self::assertSame('Rock Festival 2024', $events[0]['title']);
-        self::assertSame('online', $events[0]['sell_mode']);
-        self::assertSame('2024-08-15T19:00:00', $events[0]['start_date']);
-        self::assertSame('2024-08-15T23:00:00', $events[0]['end_date']);
+        // Rock Festival: plan_id=1001 matches base_plan_id=1001
+        self::assertTrue($events[0]->id()->equals(EventId::fromProviderId('1001')));
+        self::assertSame('Rock Festival 2024', $events[0]->title());
+        self::assertTrue($events[0]->isOnline());
+        self::assertSame('2024-08-15', $events[0]->startsAt()->format('Y-m-d'));
+        self::assertSame('2024-08-15', $events[0]->endsAt()->format('Y-m-d'));
 
-        /** @var array<int, array<string, mixed>> $zones0 */
-        $zones0 = $events[0]['zones'];
+        $zones0 = $events[0]->zones();
         self::assertCount(3, $zones0);
-        self::assertSame('General Admission', $zones0[0]['name']);
-        self::assertSame(45.0, $zones0[0]['price']);
-        self::assertSame(500, $zones0[0]['capacity']);
+        self::assertSame('General Admission', $zones0[0]->name()->value());
+        self::assertSame(45.0, $zones0[0]->price()->toFloat());
+        self::assertSame(500, $zones0[0]->capacity());
 
-        self::assertSame('1002', $events[1]['base_event_id']);
-        self::assertSame('Jazz Night Special', $events[1]['title']);
-        /** @var array<int, array<string, mixed>> $zones1 */
-        $zones1 = $events[1]['zones'];
-        self::assertCount(1, $zones1);
+        // Jazz Night Special has two plans: each gets its own plan_id (2001, 2002)
+        self::assertTrue($events[1]->id()->equals(EventId::fromProviderId('2001')));
+        self::assertSame('Jazz Night Special', $events[1]->title());
+        self::assertCount(1, $events[1]->zones());
 
-        self::assertSame('1002', $events[2]['base_event_id']);
-        self::assertSame('Jazz Night Special', $events[2]['title']);
-        /** @var array<int, array<string, mixed>> $zones2 */
-        $zones2 = $events[2]['zones'];
-        self::assertCount(1, $zones2);
+        self::assertTrue($events[2]->id()->equals(EventId::fromProviderId('2002')));
+        self::assertSame('Jazz Night Special', $events[2]->title());
+        self::assertCount(1, $events[2]->zones());
 
-        self::assertSame('1003', $events[3]['base_event_id']);
-        self::assertSame('Symphony Orchestra Gala', $events[3]['title']);
-        /** @var array<int, array<string, mixed>> $zones3 */
-        $zones3 = $events[3]['zones'];
-        self::assertCount(2, $zones3);
+        // Symphony Orchestra: plan_id=3001
+        self::assertTrue($events[3]->id()->equals(EventId::fromProviderId('3001')));
+        self::assertSame('Symphony Orchestra Gala', $events[3]->title());
+        self::assertCount(2, $events[3]->zones());
     }
 
     public function test_should_parse_real_provider_xml_response_2_with_offline_events(): void
@@ -114,24 +108,18 @@ final class ProviderClientTest extends TestCase
         $xml = file_get_contents(__DIR__ . '/../../../../../resources/response_2.xml');
         self::assertNotFalse($xml);
 
-        $responses = [
-            new MockResponse($xml),
-        ];
-
-        $httpClient = new MockHttpClient($responses);
+        $httpClient = new MockHttpClient([new MockResponse($xml)]);
         $client = new ProviderClient('http://provider:8080/events.xml', $this->logger, $httpClient);
 
         $events = $client->fetchEvents();
 
-        /** @var array<int, array<string, mixed>> $events */
+        /** @var Event[] $events */
         self::assertCount(4, $events);
 
-        $sellModes = array_column($events, 'sell_mode');
-        self::assertContains('online', $sellModes);
-        self::assertContains('offline', $sellModes);
-
-        $onlineEvents = array_filter($events, static fn (array $e): bool => $e['sell_mode'] === 'online');
+        $onlineEvents = array_filter($events, static fn (Event $e): bool => $e->isOnline());
+        $offlineEvents = array_filter($events, static fn (Event $e): bool => !$e->isOnline());
         self::assertCount(3, $onlineEvents);
+        self::assertCount(1, $offlineEvents);
     }
 
     public function test_should_parse_real_provider_xml_response_3(): void
@@ -139,23 +127,19 @@ final class ProviderClientTest extends TestCase
         $xml = file_get_contents(__DIR__ . '/../../../../../resources/response_3.xml');
         self::assertNotFalse($xml);
 
-        $responses = [
-            new MockResponse($xml),
-        ];
-
-        $httpClient = new MockHttpClient($responses);
+        $httpClient = new MockHttpClient([new MockResponse($xml)]);
         $client = new ProviderClient('http://provider:8080/events.xml', $this->logger, $httpClient);
 
         $events = $client->fetchEvents();
 
-        /** @var array<int, array<string, mixed>> $events */
+        /** @var Event[] $events */
         self::assertCount(4, $events);
 
-        $rockEvent = array_values(array_filter($events, static fn (array $e): bool => $e['base_event_id'] === '1001'))[0];
-        /** @var array<int, array<string, mixed>> $rockZones */
-        $rockZones = $rockEvent['zones'];
-        self::assertSame(400, $rockZones[0]['capacity']);
-        self::assertSame(0, $rockZones[1]['capacity']);
+        $rockId = EventId::fromProviderId('1001');
+        $rockEvent = array_values(array_filter($events, static fn (Event $e): bool => $e->id()->equals($rockId)))[0];
+        $rockZones = $rockEvent->zones();
+        self::assertSame(400, $rockZones[0]->capacity());
+        self::assertSame(0, $rockZones[1]->capacity());
     }
 
     public function test_should_skip_base_plan_with_missing_id(): void
@@ -176,18 +160,14 @@ final class ProviderClientTest extends TestCase
            </output>
         </planList>';
 
-        $responses = [
-            new MockResponse($xml),
-        ];
-
-        $httpClient = new MockHttpClient($responses);
+        $httpClient = new MockHttpClient([new MockResponse($xml)]);
         $client = new ProviderClient('http://provider:8080/events.xml', $this->logger, $httpClient);
 
         $events = $client->fetchEvents();
 
-        /** @var array<int, array<string, mixed>> $events */
+        /** @var Event[] $events */
         self::assertCount(1, $events);
-        self::assertSame('291', $events[0]['base_event_id']);
+        self::assertTrue($events[0]->id()->equals(EventId::fromProviderId('291')));
     }
 
     public function test_should_skip_zone_with_invalid_price(): void
@@ -204,22 +184,17 @@ final class ProviderClientTest extends TestCase
            </output>
         </planList>';
 
-        $responses = [
-            new MockResponse($xml),
-        ];
-
-        $httpClient = new MockHttpClient($responses);
+        $httpClient = new MockHttpClient([new MockResponse($xml)]);
         $client = new ProviderClient('http://provider:8080/events.xml', $this->logger, $httpClient);
 
         $events = $client->fetchEvents();
 
-        /** @var array<int, array<string, mixed>> $events */
+        /** @var Event[] $events */
         self::assertCount(1, $events);
-        /** @var array<int, array<string, mixed>> $zones */
-        $zones = $events[0]['zones'];
+        $zones = $events[0]->zones();
         self::assertCount(1, $zones);
-        self::assertSame('Good Zone', $zones[0]['name']);
-        self::assertSame(15.0, $zones[0]['price']);
+        self::assertSame('Good Zone', $zones[0]->name()->value());
+        self::assertSame(15.0, $zones[0]->price()->toFloat());
     }
 
     public function test_should_skip_zone_with_negative_price(): void
@@ -236,21 +211,16 @@ final class ProviderClientTest extends TestCase
            </output>
         </planList>';
 
-        $responses = [
-            new MockResponse($xml),
-        ];
-
-        $httpClient = new MockHttpClient($responses);
+        $httpClient = new MockHttpClient([new MockResponse($xml)]);
         $client = new ProviderClient('http://provider:8080/events.xml', $this->logger, $httpClient);
 
         $events = $client->fetchEvents();
 
-        /** @var array<int, array<string, mixed>> $events */
+        /** @var Event[] $events */
         self::assertCount(1, $events);
-        /** @var array<int, array<string, mixed>> $zones */
-        $zones = $events[0]['zones'];
+        $zones = $events[0]->zones();
         self::assertCount(1, $zones);
-        self::assertSame('Good Zone', $zones[0]['name']);
+        self::assertSame('Good Zone', $zones[0]->name()->value());
     }
 
     public function test_should_return_empty_array_for_empty_planList(): void
@@ -261,11 +231,7 @@ final class ProviderClientTest extends TestCase
            </output>
         </planList>';
 
-        $responses = [
-            new MockResponse($xml),
-        ];
-
-        $httpClient = new MockHttpClient($responses);
+        $httpClient = new MockHttpClient([new MockResponse($xml)]);
         $client = new ProviderClient('http://provider:8080/events.xml', $this->logger, $httpClient);
 
         $events = $client->fetchEvents();
@@ -283,11 +249,7 @@ final class ProviderClientTest extends TestCase
            </output>
         </planList>';
 
-        $responses = [
-            new MockResponse($xml),
-        ];
-
-        $httpClient = new MockHttpClient($responses);
+        $httpClient = new MockHttpClient([new MockResponse($xml)]);
         $client = new ProviderClient('http://provider:8080/events.xml', $this->logger, $httpClient);
 
         $events = $client->fetchEvents();

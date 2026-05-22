@@ -4,7 +4,14 @@ declare(strict_types=1);
 
 namespace App\EventIntegration\Infrastructure\Repositories;
 
+use App\EventIntegration\Domain\Entities\Event;
+use App\EventIntegration\Domain\Entities\Zone;
+use App\EventIntegration\Domain\Enums\SellMode;
 use App\EventIntegration\Domain\Repositories\ProviderClientInterface;
+use App\EventIntegration\Domain\ValueObjects\EventId;
+use App\EventIntegration\Domain\ValueObjects\Price;
+use App\EventIntegration\Domain\ValueObjects\ZoneName;
+use DateTimeImmutable;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpClient\RetryableHttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -33,6 +40,7 @@ final readonly class ProviderClient implements ProviderClientInterface
         );
     }
 
+    /** @return Event[] */
     public function fetchEvents(): array
     {
         try {
@@ -47,7 +55,7 @@ final readonly class ProviderClient implements ProviderClientInterface
         }
     }
 
-    /** @return array<array<string, mixed>> */
+    /** @return Event[] */
     private function parseXml(string $xmlContent): array
     {
         $previousValue = libxml_use_internal_errors(true);
@@ -63,21 +71,17 @@ final readonly class ProviderClient implements ProviderClientInterface
 
         libxml_use_internal_errors($previousValue);
 
-        $events = [];
-
         if (!isset($xml->output->base_plan)) {
             $this->logger->warning('No base_plan elements found in XML');
 
             return [];
         }
 
-        foreach ($xml->output->base_plan as $basePlanNode) {
-            $basePlanData = $this->parseBasePlanNode($basePlanNode);
+        $events = [];
 
-            if ($basePlanData !== null) {
-                foreach ($basePlanData as $eventData) {
-                    $events[] = $eventData;
-                }
+        foreach ($xml->output->base_plan as $basePlanNode) {
+            foreach ($this->parseBasePlanNode($basePlanNode) as $event) {
+                $events[] = $event;
             }
         }
 
@@ -85,40 +89,38 @@ final readonly class ProviderClient implements ProviderClientInterface
     }
 
     /**
-     * A base_plan can contain multiple plan elements.
-     * Each plan becomes an independent event.
+     * A base_plan can contain multiple plan elements; each plan becomes an independent event.
      *
-     * @return array<int, array<string, mixed>>|null
+     * @return Event[]
      */
-    private function parseBasePlanNode(\SimpleXMLElement $basePlanNode): ?array
+    private function parseBasePlanNode(\SimpleXMLElement $basePlanNode): array
     {
         $baseEventId = (string) ($basePlanNode['base_plan_id'] ?? '');
         $title = (string) ($basePlanNode['title'] ?? '');
         $sellMode = (string) ($basePlanNode['sell_mode'] ?? '');
 
         if ($baseEventId === '' || $title === '') {
-            return null;
+            return [];
         }
 
         if (!isset($basePlanNode->plan)) {
-            return null;
+            return [];
         }
 
         $events = [];
 
         foreach ($basePlanNode->plan as $planNode) {
-            $eventData = $this->parsePlanNode($planNode, $baseEventId, $title, $sellMode);
+            $event = $this->parsePlanNode($planNode, $baseEventId, $title, $sellMode);
 
-            if ($eventData !== null) {
-                $events[] = $eventData;
+            if ($event !== null) {
+                $events[] = $event;
             }
         }
 
         return $events;
     }
 
-    /** @return array<string, mixed>|null */
-    private function parsePlanNode(\SimpleXMLElement $planNode, string $baseEventId, string $title, string $sellMode): ?array
+    private function parsePlanNode(\SimpleXMLElement $planNode, string $baseEventId, string $title, string $sellMode): ?Event
     {
         $startDate = (string) ($planNode['plan_start_date'] ?? '');
         $endDate = (string) ($planNode['plan_end_date'] ?? '');
@@ -127,30 +129,47 @@ final readonly class ProviderClient implements ProviderClientInterface
             return null;
         }
 
-        $zones = [];
+        try {
+            $startsAt = new DateTimeImmutable($startDate);
+            $endsAt = new DateTimeImmutable($endDate);
+        } catch (\Exception $e) {
+            $this->logger->warning('Invalid date in plan, skipping', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        // plan_id uniquely identifies each occurrence; base_plan_id identifies the event type.
+        // Multiple plans under the same base_plan share the same base_plan_id but have different
+        // dates — using plan_id prevents later plans from overwriting earlier ones in the DB.
+        $planId = (string) ($planNode['plan_id'] ?? '');
+        $eventId = $planId !== '' ? $planId : $baseEventId;
+
+        $event = new Event(
+            EventId::fromProviderId($eventId),
+            $title,
+            $startsAt,
+            $endsAt,
+            SellMode::tryFrom($sellMode) ?? SellMode::OFFLINE,
+        );
 
         if (isset($planNode->zone)) {
             foreach ($planNode->zone as $zoneNode) {
-                $zoneData = $this->parseZoneNode($zoneNode);
+                $zone = $this->parseZoneNode($zoneNode);
 
-                if ($zoneData !== null) {
-                    $zones[] = $zoneData;
+                if ($zone !== null) {
+                    $event->addZone($zone);
                 }
             }
         }
 
-        return [
-            'base_event_id' => $baseEventId,
-            'title' => $title,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'sell_mode' => $sellMode,
-            'zones' => $zones,
-        ];
+        return $event;
     }
 
-    /** @return array<string, mixed>|null */
-    private function parseZoneNode(\SimpleXMLElement $zoneNode): ?array
+    private function parseZoneNode(\SimpleXMLElement $zoneNode): ?Zone
     {
         $name = (string) ($zoneNode['name'] ?? '');
         $price = (string) ($zoneNode['price'] ?? '');
@@ -180,10 +199,10 @@ final readonly class ProviderClient implements ProviderClientInterface
             return null;
         }
 
-        return [
-            'name' => $name,
-            'price' => $priceValue,
-            'capacity' => (int) $capacity,
-        ];
+        return new Zone(
+            new ZoneName($name),
+            Price::fromFloat($priceValue),
+            (int) $capacity,
+        );
     }
 }
