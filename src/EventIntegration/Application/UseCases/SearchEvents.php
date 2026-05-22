@@ -6,12 +6,12 @@ namespace App\EventIntegration\Application\UseCases;
 
 use App\EventIntegration\Application\DTOs\SearchEventsInput;
 use App\EventIntegration\Domain\Entities\Event;
-use App\EventIntegration\Domain\Repositories\EventRepositoryInterface;
+use App\EventIntegration\Domain\Repositories\SearchEventsRepository;
 
 final readonly class SearchEvents
 {
     public function __construct(
-        private EventRepositoryInterface $eventRepository
+        private SearchEventsRepository $eventRepository
     ) {
     }
 

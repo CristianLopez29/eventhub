@@ -7,7 +7,8 @@ namespace App\EventIntegration\Infrastructure\Repositories;
 use App\EventIntegration\Domain\Entities\Event;
 use App\EventIntegration\Domain\Entities\Zone;
 use App\EventIntegration\Domain\Enums\SellMode;
-use App\EventIntegration\Domain\Repositories\EventRepositoryInterface;
+use App\EventIntegration\Domain\Repositories\SaveEventRepository;
+use App\EventIntegration\Domain\Repositories\SearchEventsRepository;
 use App\EventIntegration\Domain\ValueObjects\EventId;
 use App\EventIntegration\Domain\ValueObjects\Price;
 use App\EventIntegration\Domain\ValueObjects\ZoneName;
@@ -16,7 +17,7 @@ use App\EventIntegration\Infrastructure\Persistence\ZoneModel;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 
-final readonly class DoctrineEventRepository implements EventRepositoryInterface
+final readonly class DoctrineEventRepository implements SearchEventsRepository, SaveEventRepository
 {
     public function __construct(
         private EntityManagerInterface $entityManager
