@@ -6,9 +6,11 @@ namespace App\Tests\EventIntegration\Unit\Infrastructure\Console;
 
 use App\EventIntegration\Application\Contracts\EventCacheInvalidator;
 use App\EventIntegration\Application\UseCases\SyncProviderEvents;
-use App\EventIntegration\Domain\Repositories\EventRepositoryInterface;
+use App\EventIntegration\Domain\Enums\SellMode;
 use App\EventIntegration\Domain\Repositories\ProviderClientInterface;
+use App\EventIntegration\Domain\Repositories\SaveEventRepository;
 use App\EventIntegration\Infrastructure\Console\SyncEventsCommand;
+use App\Tests\EventIntegration\Builders\EventBuilder;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -18,23 +20,23 @@ use Symfony\Component\Console\Tester\CommandTester;
 final class SyncEventsCommandTest extends TestCase
 {
     private ProviderClientInterface&MockObject $providerClient;
-    private SyncEventsCommand $command;
     private EventCacheInvalidator&MockObject $cacheInvalidator;
+    private SyncEventsCommand $command;
 
     protected function setUp(): void
     {
         $this->providerClient = $this->createMock(ProviderClientInterface::class);
         $this->cacheInvalidator = $this->createMock(EventCacheInvalidator::class);
 
-        $eventRepository = $this->createMock(EventRepositoryInterface::class);
+        $eventRepository = $this->createMock(SaveEventRepository::class);
         $logger = $this->createMock(LoggerInterface::class);
+        $eventRepository->method('exists')->willReturn(false);
 
-        $syncProviderEvents = new SyncProviderEvents($eventRepository, $logger);
+        $syncProviderEvents = new SyncProviderEvents($eventRepository, $logger, $this->cacheInvalidator);
 
         $this->command = new SyncEventsCommand(
             $this->providerClient,
             $syncProviderEvents,
-            $this->cacheInvalidator,
         );
     }
 
@@ -42,14 +44,7 @@ final class SyncEventsCommandTest extends TestCase
     public function should_sync_events_and_purge_cache(): void
     {
         $events = [
-            [
-                'base_event_id' => 'evt-1',
-                'title' => 'Concert A',
-                'start_date' => '2024-07-01 20:00:00',
-                'end_date' => '2024-07-01 23:00:00',
-                'sell_mode' => 'online',
-                'zones' => [],
-            ],
+            EventBuilder::create()->withProviderId('evt-1')->withTitle('Concert A')->build(),
         ];
 
         $this->providerClient
@@ -94,22 +89,8 @@ final class SyncEventsCommandTest extends TestCase
     public function should_purge_cache_after_successful_sync(): void
     {
         $events = [
-            [
-                'base_event_id' => 'evt-1',
-                'title' => 'Concert A',
-                'start_date' => '2024-07-01 20:00:00',
-                'end_date' => '2024-07-01 23:00:00',
-                'sell_mode' => 'online',
-                'zones' => [],
-            ],
-            [
-                'base_event_id' => 'evt-2',
-                'title' => 'Concert B',
-                'start_date' => '2024-07-02 20:00:00',
-                'end_date' => '2024-07-02 23:00:00',
-                'sell_mode' => 'offline',
-                'zones' => [],
-            ],
+            EventBuilder::create()->withProviderId('evt-1')->withTitle('Concert A')->build(),
+            EventBuilder::create()->withProviderId('evt-2')->withTitle('Concert B')->withSellMode(SellMode::OFFLINE)->build(),
         ];
 
         $this->providerClient

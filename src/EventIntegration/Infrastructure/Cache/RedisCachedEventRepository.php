@@ -6,19 +6,23 @@ namespace App\EventIntegration\Infrastructure\Cache;
 
 use App\EventIntegration\Application\Contracts\EventCacheInvalidator;
 use App\EventIntegration\Domain\Entities\Event;
-use App\EventIntegration\Domain\Repositories\EventRepositoryInterface;
+use App\EventIntegration\Domain\Repositories\SaveEventRepository;
+use App\EventIntegration\Domain\Repositories\SearchEventsRepository;
 use App\EventIntegration\Domain\ValueObjects\EventId;
 use DateTimeImmutable;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
-final readonly class RedisCachedEventRepository implements EventRepositoryInterface, EventCacheInvalidator
+final readonly class RedisCachedEventRepository implements SearchEventsRepository, SaveEventRepository, EventCacheInvalidator
 {
+    private const int EVENT_CACHE_TTL_SECONDS = 3600;
+    private const int SEARCH_CACHE_TTL_SECONDS = 300;
+
     private CacheInterface $cache;
 
     public function __construct(
-        private EventRepositoryInterface $innerRepository,
+        private SearchEventsRepository&SaveEventRepository $innerRepository,
         private RedisAdapter $cacheAdapter,
     ) {
         $this->cache = $cacheAdapter;
@@ -29,7 +33,7 @@ final readonly class RedisCachedEventRepository implements EventRepositoryInterf
         $cacheKey = 'event_' . $eventId->value();
 
         return $this->cache->get($cacheKey, function (ItemInterface $item) use ($eventId): ?Event {
-            $item->expiresAfter(3600);
+            $item->expiresAfter(self::EVENT_CACHE_TTL_SECONDS);
 
             return $this->innerRepository->findById($eventId);
         });
@@ -49,7 +53,7 @@ final readonly class RedisCachedEventRepository implements EventRepositoryInterf
         );
 
         return $this->cache->get($cacheKey, function (ItemInterface $item) use ($startsAt, $endsAt): array {
-            $item->expiresAfter(300);
+            $item->expiresAfter(self::SEARCH_CACHE_TTL_SECONDS);
 
             return $this->innerRepository->searchByDateRange($startsAt, $endsAt);
         });
@@ -59,7 +63,6 @@ final readonly class RedisCachedEventRepository implements EventRepositoryInterf
     {
         $this->innerRepository->save($event);
         $this->invalidateEventCache($event->id()->value());
-        $this->invalidateSearchCache();
     }
 
     public function invalidateSearchCache(): void
@@ -69,6 +72,6 @@ final readonly class RedisCachedEventRepository implements EventRepositoryInterf
 
     private function invalidateEventCache(string $eventId): void
     {
-        $this->cache->deleteItem('event_' . $eventId);
+        $this->cacheAdapter->deleteItem('event_' . $eventId);
     }
 }

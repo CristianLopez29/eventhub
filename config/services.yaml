@@ -58,8 +58,15 @@ services:
             $redis: '@app.event_integration.redis_connection'
             $namespace: 'event_integration'
 
-    App\EventIntegration\Domain\Repositories\EventRepositoryInterface:
+    App\EventIntegration\Domain\Repositories\SearchEventsRepository:
         public: true
+        alias: App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository
+
+    App\EventIntegration\Domain\Repositories\SaveEventRepository:
+        public: true
+        alias: App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository
+
+    App\EventIntegration\Application\Contracts\EventCacheInvalidator:
         alias: App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository
 
     App\EventIntegration\Infrastructure\Repositories\ProviderClient:

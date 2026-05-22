@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\EventIntegration\Infrastructure\Console;
 
-use App\EventIntegration\Application\Contracts\EventCacheInvalidator;
 use App\EventIntegration\Application\DTOs\SyncEventsInput;
 use App\EventIntegration\Application\UseCases\SyncProviderEvents;
 use App\EventIntegration\Domain\Repositories\ProviderClientInterface;
@@ -22,7 +21,6 @@ final class SyncEventsCommand extends Command
     public function __construct(
         private readonly ProviderClientInterface $providerClient,
         private readonly SyncProviderEvents $syncProviderEvents,
-        private readonly EventCacheInvalidator $cacheInvalidator,
     ) {
         parent::__construct();
     }
@@ -49,8 +47,6 @@ final class SyncEventsCommand extends Command
             $result->updatedCount,
             $result->skippedCount
         ));
-
-        $this->cacheInvalidator->invalidateSearchCache();
 
         $output->writeln('<info>Events synchronized successfully. Redis cache purged.</info>');
 

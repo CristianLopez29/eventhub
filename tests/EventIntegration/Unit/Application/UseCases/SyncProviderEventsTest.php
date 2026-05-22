@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\EventIntegration\Unit\Application\UseCases;
 
+use App\EventIntegration\Application\Contracts\EventCacheInvalidator;
 use App\EventIntegration\Application\DTOs\SyncEventsInput;
 use App\EventIntegration\Application\UseCases\SyncProviderEvents;
 use App\EventIntegration\Domain\Entities\Event;
-use App\EventIntegration\Domain\Repositories\EventRepositoryInterface;
+use App\EventIntegration\Domain\Enums\SellMode;
+use App\EventIntegration\Domain\Repositories\SaveEventRepository;
+use App\Tests\EventIntegration\Builders\EventBuilder;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -15,32 +18,29 @@ use Psr\Log\LoggerInterface;
 
 final class SyncProviderEventsTest extends TestCase
 {
-    private EventRepositoryInterface&MockObject $eventRepository;
+    private SaveEventRepository&MockObject $eventRepository;
     private LoggerInterface&MockObject $logger;
+    private EventCacheInvalidator&MockObject $cacheInvalidator;
     private SyncProviderEvents $useCase;
 
     protected function setUp(): void
     {
-        $this->eventRepository = $this->createMock(EventRepositoryInterface::class);
+        $this->eventRepository = $this->createMock(SaveEventRepository::class);
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->useCase = new SyncProviderEvents($this->eventRepository, $this->logger);
+        $this->cacheInvalidator = $this->createMock(EventCacheInvalidator::class);
+        $this->useCase = new SyncProviderEvents($this->eventRepository, $this->logger, $this->cacheInvalidator);
     }
 
     #[Test]
     public function should_insert_new_online_events(): void
     {
-        $input = new SyncEventsInput([
-            [
-                'base_event_id' => 'evt-1',
-                'title' => 'Concert A',
-                'start_date' => '2024-07-01 20:00:00',
-                'end_date' => '2024-07-01 23:00:00',
-                'sell_mode' => 'online',
-                'zones' => [
-                    ['name' => 'General', 'price' => 30.00, 'capacity' => 100],
-                ],
-            ],
-        ]);
+        $event = EventBuilder::create()
+            ->withProviderId('evt-1')
+            ->withTitle('Concert A')
+            ->withZone('General', 30.00, 100)
+            ->build();
+
+        $input = new SyncEventsInput([$event]);
 
         $this->eventRepository
             ->expects($this->once())
@@ -55,10 +55,11 @@ final class SyncProviderEventsTest extends TestCase
         $this->eventRepository
             ->expects($this->once())
             ->method('save')
-            ->with($this->callback(function (Event $event): bool {
-                return $event->title() === 'Concert A'
-                    && $event->isOnline();
+            ->with($this->callback(function (Event $e) use ($event): bool {
+                return $e->title() === 'Concert A' && $e->isOnline();
             }));
+
+        $this->cacheInvalidator->expects($this->once())->method('invalidateSearchCache');
 
         $result = $this->useCase->sync($input);
 
@@ -70,16 +71,12 @@ final class SyncProviderEventsTest extends TestCase
     #[Test]
     public function should_update_existing_online_events(): void
     {
-        $input = new SyncEventsInput([
-            [
-                'base_event_id' => 'evt-1',
-                'title' => 'Concert A Updated',
-                'start_date' => '2024-07-01 20:00:00',
-                'end_date' => '2024-07-01 23:00:00',
-                'sell_mode' => 'online',
-                'zones' => [],
-            ],
-        ]);
+        $event = EventBuilder::create()
+            ->withProviderId('evt-1')
+            ->withTitle('Concert A Updated')
+            ->build();
+
+        $input = new SyncEventsInput([$event]);
 
         $this->eventRepository
             ->expects($this->once())
@@ -91,9 +88,8 @@ final class SyncProviderEventsTest extends TestCase
             ->method('info')
             ->with('Updating existing event', $this->anything());
 
-        $this->eventRepository
-            ->expects($this->once())
-            ->method('save');
+        $this->eventRepository->expects($this->once())->method('save');
+        $this->cacheInvalidator->expects($this->once())->method('invalidateSearchCache');
 
         $result = $this->useCase->sync($input);
 
@@ -105,29 +101,22 @@ final class SyncProviderEventsTest extends TestCase
     #[Test]
     public function should_skip_offline_events(): void
     {
-        $input = new SyncEventsInput([
-            [
-                'base_event_id' => 'evt-1',
-                'title' => 'Concert A',
-                'start_date' => '2024-07-01 20:00:00',
-                'end_date' => '2024-07-01 23:00:00',
-                'sell_mode' => 'offline',
-                'zones' => [],
-            ],
-        ]);
+        $event = EventBuilder::create()
+            ->withProviderId('evt-1')
+            ->withTitle('Concert A')
+            ->withSellMode(SellMode::OFFLINE)
+            ->build();
+
+        $input = new SyncEventsInput([$event]);
 
         $this->logger
             ->expects($this->once())
             ->method('info')
-            ->with('Skipping non-online event', ['sell_mode' => 'offline']);
+            ->with('Skipping non-online event', $this->anything());
 
-        $this->eventRepository
-            ->expects($this->never())
-            ->method('exists');
-
-        $this->eventRepository
-            ->expects($this->never())
-            ->method('save');
+        $this->eventRepository->expects($this->never())->method('exists');
+        $this->eventRepository->expects($this->never())->method('save');
+        $this->cacheInvalidator->expects($this->once())->method('invalidateSearchCache');
 
         $result = $this->useCase->sync($input);
 
@@ -139,33 +128,20 @@ final class SyncProviderEventsTest extends TestCase
     #[Test]
     public function should_save_multiple_online_events(): void
     {
-        $input = new SyncEventsInput([
-            [
-                'base_event_id' => 'evt-1',
-                'title' => 'Concert A',
-                'start_date' => '2024-07-01 20:00:00',
-                'end_date' => '2024-07-01 23:00:00',
-                'sell_mode' => 'online',
-                'zones' => [],
-            ],
-            [
-                'base_event_id' => 'evt-2',
-                'title' => 'Concert B',
-                'start_date' => '2024-07-02 20:00:00',
-                'end_date' => '2024-07-02 23:00:00',
-                'sell_mode' => 'online',
-                'zones' => [],
-            ],
-        ]);
+        $events = [
+            EventBuilder::create()->withProviderId('evt-1')->withTitle('Concert A')->build(),
+            EventBuilder::create()->withProviderId('evt-2')->withTitle('Concert B')->build(),
+        ];
+
+        $input = new SyncEventsInput($events);
 
         $this->eventRepository
             ->expects($this->exactly(2))
             ->method('exists')
             ->willReturn(false);
 
-        $this->eventRepository
-            ->expects($this->exactly(2))
-            ->method('save');
+        $this->eventRepository->expects($this->exactly(2))->method('save');
+        $this->cacheInvalidator->expects($this->once())->method('invalidateSearchCache');
 
         $result = $this->useCase->sync($input);
 
@@ -177,19 +153,14 @@ final class SyncProviderEventsTest extends TestCase
     #[Test]
     public function should_persist_event_with_zones(): void
     {
-        $input = new SyncEventsInput([
-            [
-                'base_event_id' => 'evt-1',
-                'title' => 'Concert A',
-                'start_date' => '2024-07-01 20:00:00',
-                'end_date' => '2024-07-01 23:00:00',
-                'sell_mode' => 'online',
-                'zones' => [
-                    ['name' => 'General', 'price' => 30.00, 'capacity' => 100],
-                    ['name' => 'VIP', 'price' => 80.00, 'capacity' => 20],
-                ],
-            ],
-        ]);
+        $event = EventBuilder::create()
+            ->withProviderId('evt-1')
+            ->withTitle('Concert A')
+            ->withZone('General', 30.00, 100)
+            ->withZone('VIP', 80.00, 20)
+            ->build();
+
+        $input = new SyncEventsInput([$event]);
 
         $this->eventRepository
             ->expects($this->once())
@@ -199,15 +170,17 @@ final class SyncProviderEventsTest extends TestCase
         $this->eventRepository
             ->expects($this->once())
             ->method('save')
-            ->with($this->callback(function (Event $event): bool {
-                $zones = $event->zones();
+            ->with($this->callback(function (Event $e): bool {
+                $zones = $e->zones();
 
                 return count($zones) === 2
                     && $zones[0]->name()->value() === 'General'
                     && $zones[1]->name()->value() === 'VIP'
-                    && $event->minPrice()?->cents() === 3000
-                    && $event->maxPrice()?->cents() === 8000;
+                    && $e->minPrice()?->cents() === 3000
+                    && $e->maxPrice()?->cents() === 8000;
             }));
+
+        $this->cacheInvalidator->expects($this->once())->method('invalidateSearchCache');
 
         $this->useCase->sync($input);
     }
@@ -215,41 +188,21 @@ final class SyncProviderEventsTest extends TestCase
     #[Test]
     public function should_mixed_insert_update_and_skip(): void
     {
-        $input = new SyncEventsInput([
-            [
-                'base_event_id' => 'evt-1',
-                'title' => 'Concert A',
-                'start_date' => '2024-07-01 20:00:00',
-                'end_date' => '2024-07-01 23:00:00',
-                'sell_mode' => 'online',
-                'zones' => [],
-            ],
-            [
-                'base_event_id' => 'evt-2',
-                'title' => 'Concert B',
-                'start_date' => '2024-07-02 20:00:00',
-                'end_date' => '2024-07-02 23:00:00',
-                'sell_mode' => 'offline',
-                'zones' => [],
-            ],
-            [
-                'base_event_id' => 'evt-3',
-                'title' => 'Concert C',
-                'start_date' => '2024-07-03 20:00:00',
-                'end_date' => '2024-07-03 23:00:00',
-                'sell_mode' => 'online',
-                'zones' => [],
-            ],
-        ]);
+        $events = [
+            EventBuilder::create()->withProviderId('evt-1')->withTitle('Concert A')->build(),
+            EventBuilder::create()->withProviderId('evt-2')->withTitle('Concert B')->withSellMode(SellMode::OFFLINE)->build(),
+            EventBuilder::create()->withProviderId('evt-3')->withTitle('Concert C')->build(),
+        ];
+
+        $input = new SyncEventsInput($events);
 
         $this->eventRepository
             ->expects($this->exactly(2))
             ->method('exists')
             ->willReturnOnConsecutiveCalls(false, true);
 
-        $this->eventRepository
-            ->expects($this->exactly(2))
-            ->method('save');
+        $this->eventRepository->expects($this->exactly(2))->method('save');
+        $this->cacheInvalidator->expects($this->once())->method('invalidateSearchCache');
 
         $result = $this->useCase->sync($input);
 
