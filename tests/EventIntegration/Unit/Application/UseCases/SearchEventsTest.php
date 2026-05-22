@@ -6,8 +6,7 @@ namespace App\Tests\EventIntegration\Unit\Application\UseCases;
 
 use App\EventIntegration\Application\DTOs\SearchEventsInput;
 use App\EventIntegration\Application\UseCases\SearchEvents;
-use App\EventIntegration\Domain\Entities\Event;
-use App\EventIntegration\Domain\Repositories\EventRepositoryInterface;
+use App\EventIntegration\Domain\Repositories\SearchEventsRepository;
 use App\Tests\EventIntegration\Builders\EventBuilder;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
@@ -16,12 +15,12 @@ use PHPUnit\Framework\TestCase;
 
 final class SearchEventsTest extends TestCase
 {
-    private EventRepositoryInterface&MockObject $eventRepository;
+    private SearchEventsRepository&MockObject $eventRepository;
     private SearchEvents $useCase;
 
     protected function setUp(): void
     {
-        $this->eventRepository = $this->createMock(EventRepositoryInterface::class);
+        $this->eventRepository = $this->createMock(SearchEventsRepository::class);
         $this->useCase = new SearchEvents($this->eventRepository);
     }
 

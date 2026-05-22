@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\EventIntegration\Integration;
 
-use App\EventIntegration\Domain\Repositories\EventRepositoryInterface;
+use App\EventIntegration\Domain\Repositories\SaveEventRepository;
+use App\EventIntegration\Domain\Repositories\SearchEventsRepository;
 use App\EventIntegration\Domain\ValueObjects\EventId;
 use App\Tests\EventIntegration\Builders\EventBuilder;
 use DateTimeImmutable;
@@ -12,13 +13,15 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class DoctrineEventRepositoryTest extends KernelTestCase
 {
-    private EventRepositoryInterface $repository;
+    private SaveEventRepository $writeRepository;
+    private SearchEventsRepository $readRepository;
 
     protected function setUp(): void
     {
         self::bootKernel();
 
-        $this->repository = self::getContainer()->get(EventRepositoryInterface::class);
+        $this->writeRepository = self::getContainer()->get(SaveEventRepository::class);
+        $this->readRepository = self::getContainer()->get(SearchEventsRepository::class);
 
         $this->cleanDatabase();
     }
@@ -45,9 +48,9 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
             ->withZone('VIP', 100.0, 50)
             ->build();
 
-        $this->repository->save($event);
+        $this->writeRepository->save($event);
 
-        $retrieved = $this->repository->findById($event->id());
+        $retrieved = $this->readRepository->findById($event->id());
 
         self::assertNotNull($retrieved);
         self::assertTrue($event->id()->equals($retrieved->id()));
@@ -57,7 +60,7 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
 
     public function test_should_return_null_when_event_not_found(): void
     {
-        $result = $this->repository->findById(EventId::fromProviderId('non-existent'));
+        $result = $this->readRepository->findById(EventId::fromProviderId('non-existent'));
 
         self::assertNull($result);
     }
@@ -72,7 +75,7 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
             ->withZone('General', 50.0, 100)
             ->build();
 
-        $this->repository->save($event);
+        $this->writeRepository->save($event);
 
         $updatedEvent = EventBuilder::create()
             ->withProviderId('provider-456')
@@ -83,9 +86,9 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
             ->withZone('Premium', 120.0, 30)
             ->build();
 
-        $this->repository->save($updatedEvent);
+        $this->writeRepository->save($updatedEvent);
 
-        $retrieved = $this->repository->findById($updatedEvent->id());
+        $retrieved = $this->readRepository->findById($updatedEvent->id());
 
         self::assertNotNull($retrieved);
         self::assertSame('Updated Title', $retrieved->title());
@@ -115,11 +118,11 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
             ->withEndsAt(new DateTimeImmutable('2024-08-20 12:00:00'))
             ->build();
 
-        $this->repository->save($event1);
-        $this->repository->save($event2);
-        $this->repository->save($event3);
+        $this->writeRepository->save($event1);
+        $this->writeRepository->save($event2);
+        $this->writeRepository->save($event3);
 
-        $results = $this->repository->searchByDateRange(
+        $results = $this->readRepository->searchByDateRange(
             new DateTimeImmutable('2024-06-01 00:00:00'),
             new DateTimeImmutable('2024-07-31 23:59:59')
         );
@@ -131,7 +134,7 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
 
     public function test_should_return_empty_array_when_no_events_in_range(): void
     {
-        $results = $this->repository->searchByDateRange(
+        $results = $this->readRepository->searchByDateRange(
             new DateTimeImmutable('2025-01-01 00:00:00'),
             new DateTimeImmutable('2025-12-31 23:59:59')
         );
@@ -148,9 +151,9 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
             ->withEndsAt(new DateTimeImmutable('2023-01-15 12:00:00'))
             ->build();
 
-        $this->repository->save($pastEvent);
+        $this->writeRepository->save($pastEvent);
 
-        $results = $this->repository->searchByDateRange(
+        $results = $this->readRepository->searchByDateRange(
             new DateTimeImmutable('2023-01-01 00:00:00'),
             new DateTimeImmutable('2023-01-31 23:59:59')
         );

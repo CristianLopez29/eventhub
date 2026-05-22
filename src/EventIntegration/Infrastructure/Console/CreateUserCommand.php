@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\EventIntegration\Infrastructure\Console;
 
-use App\EventIntegration\Infrastructure\Security\UserProvider;
+use App\EventIntegration\Infrastructure\Security\User;
+use App\EventIntegration\Infrastructure\Security\UserRepository;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -19,7 +20,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 final class CreateUserCommand extends Command
 {
     public function __construct(
-        private UserProvider $userProvider,
+        private UserRepository $userRepository,
         private UserPasswordHasherInterface $passwordHasher,
     ) {
         parent::__construct();
@@ -49,16 +50,16 @@ final class CreateUserCommand extends Command
             return Command::FAILURE;
         }
 
-        if ($this->userProvider->userExists($username)) {
+        if ($this->userRepository->userExists($username)) {
             $output->writeln(sprintf('<error>User "%s" already exists.</error>', $username));
 
             return Command::FAILURE;
         }
 
-        $user = new \App\EventIntegration\Infrastructure\Security\User($username, '');
+        $user = new User($username, '');
         $hashedPassword = $this->passwordHasher->hashPassword($user, $password);
 
-        $this->userProvider->addUser($username, $hashedPassword);
+        $this->userRepository->addUser($username, $hashedPassword);
 
         $output->writeln(sprintf('<info>User "%s" created successfully.</info>', $username));
 

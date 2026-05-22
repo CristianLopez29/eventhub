@@ -45,7 +45,16 @@ setup: start jwt-keys ## Full installation from scratch
 	else \
 		echo "No migrations to execute."; \
 	fi
+	@echo "Preparing test database..."
+	-$(CONSOLE) doctrine:database:create --env=test --if-not-exists
+	-$(CONSOLE) doctrine:migrations:migrate --env=test --no-interaction
+	@echo "Creating default admin user..."
+	-$(CONSOLE) app:create-user admin secret123
+	@echo "Loading initial events from provider..."
+	-$(CONSOLE) app:sync-events
+	@echo ""
 	@echo "Setup completed. The application is available at http://localhost:8000"
+	@echo "Default credentials: admin / secret123"
 
 jwt-keys: ## Generate JWT keys if they do not exist
 	@if ! $(PHP_CONT) test -f config/jwt/private.pem; then \

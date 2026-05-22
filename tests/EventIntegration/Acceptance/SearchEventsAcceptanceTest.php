@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\EventIntegration\Acceptance;
 
-use App\EventIntegration\Domain\Repositories\EventRepositoryInterface;
+use App\EventIntegration\Domain\Repositories\SaveEventRepository;
 use App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository;
 use App\Tests\EventIntegration\Builders\EventBuilder;
 use DateTimeImmutable;
@@ -31,15 +31,25 @@ final class SearchEventsAcceptanceTest extends WebTestCase
         $cachedRepository->invalidateSearchCache();
     }
 
-    private function authenticateClient($client): void
+    private function authenticateClient(\Symfony\Bundle\FrameworkBundle\KernelBrowser $client): void
     {
+        $entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
+        $connection = $entityManager->getConnection();
+
+        // Ensure the test user exists (INSERT IGNORE is safe across multiple tests in the same run)
+        $hashedPassword = password_hash('test_pass', PASSWORD_BCRYPT, ['cost' => 4]);
+        $connection->executeStatement(
+            'INSERT IGNORE INTO users (username, password, roles) VALUES (?, ?, ?)',
+            ['admin', $hashedPassword, '["ROLE_USER"]']
+        );
+
         $client->request(
             'POST',
             '/login',
             [],
             [],
             ['CONTENT_TYPE' => 'application/json'],
-            json_encode(['username' => 'admin', 'password' => 'adminpass'])
+            json_encode(['username' => 'admin', 'password' => 'test_pass'])
         );
 
         $response = json_decode($client->getResponse()->getContent(), true);
@@ -66,7 +76,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
         $this->cleanDatabase();
         $this->clearCache();
 
-        $repository = self::getContainer()->get(EventRepositoryInterface::class);
+        $repository = self::getContainer()->get(SaveEventRepository::class);
 
         $event = EventBuilder::create()
             ->withProviderId('event-123')
@@ -209,7 +219,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
         $this->cleanDatabase();
         $this->clearCache();
 
-        $repository = self::getContainer()->get(EventRepositoryInterface::class);
+        $repository = self::getContainer()->get(SaveEventRepository::class);
 
         $event1 = EventBuilder::create()
             ->withProviderId('event-1')
