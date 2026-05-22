@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\EventIntegration\Integration;
 
-use App\EventIntegration\Domain\Repositories\EventRepositoryInterface;
+use App\EventIntegration\Domain\Repositories\SaveEventRepository;
 use App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository;
 use App\Tests\EventIntegration\Builders\EventBuilder;
 use DateTimeImmutable;
@@ -12,14 +12,14 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class RedisCachedEventRepositoryTest extends KernelTestCase
 {
-    private EventRepositoryInterface $repository;
+    private SaveEventRepository $writeRepository;
     private RedisCachedEventRepository $cachedRepository;
 
     protected function setUp(): void
     {
         self::bootKernel();
 
-        $this->repository = self::getContainer()->get(EventRepositoryInterface::class);
+        $this->writeRepository = self::getContainer()->get(SaveEventRepository::class);
         $this->cachedRepository = self::getContainer()->get(RedisCachedEventRepository::class);
 
         $this->cleanDatabase();
@@ -44,7 +44,7 @@ final class RedisCachedEventRepositoryTest extends KernelTestCase
             ->withTitle('Cached Event')
             ->build();
 
-        $this->repository->save($event);
+        $this->writeRepository->save($event);
 
         $first = $this->cachedRepository->findById($event->id());
         $second = $this->cachedRepository->findById($event->id());
@@ -64,7 +64,7 @@ final class RedisCachedEventRepositoryTest extends KernelTestCase
             ->withEndsAt(new DateTimeImmutable('2024-06-15 12:00:00'))
             ->build();
 
-        $this->repository->save($event);
+        $this->writeRepository->save($event);
 
         $startsAt = new DateTimeImmutable('2024-06-01 00:00:00');
         $endsAt = new DateTimeImmutable('2024-06-30 23:59:59');
@@ -84,7 +84,7 @@ final class RedisCachedEventRepositoryTest extends KernelTestCase
             ->withTitle('Original Cache')
             ->build();
 
-        $this->repository->save($event);
+        $this->writeRepository->save($event);
 
         $this->cachedRepository->findById($event->id());
 
@@ -110,7 +110,7 @@ final class RedisCachedEventRepositoryTest extends KernelTestCase
             ->withEndsAt(new DateTimeImmutable('2024-06-15 12:00:00'))
             ->build();
 
-        $this->repository->save($event);
+        $this->writeRepository->save($event);
 
         $startsAt = new DateTimeImmutable('2024-06-01 00:00:00');
         $endsAt = new DateTimeImmutable('2024-06-30 23:59:59');
