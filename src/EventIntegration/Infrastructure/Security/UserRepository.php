@@ -33,6 +33,6 @@ final class UserRepository
             [$username]
         );
 
-        return (int) $count > 0;
+        return is_numeric($count) && (int) $count > 0;
     }
 }
