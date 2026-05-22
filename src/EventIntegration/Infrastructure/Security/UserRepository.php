@@ -22,7 +22,7 @@ final class UserRepository
         $this->connection->insert('users', [
             'username' => $username,
             'password' => $hashedPassword,
-            'roles' => json_encode($roles),
+            'roles' => json_encode($roles, JSON_THROW_ON_ERROR),
         ]);
     }
 
@@ -33,6 +33,6 @@ final class UserRepository
             [$username]
         );
 
-        return $count > 0;
+        return (int) $count > 0;
     }
 }
