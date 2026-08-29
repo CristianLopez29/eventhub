@@ -5,6 +5,7 @@
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg)](phpstan.neon)
 [![Symfony](https://img.shields.io/badge/Symfony-8-black.svg)](https://symfony.com)
 [![PHP](https://img.shields.io/badge/PHP-8.4-blue.svg)](https://php.net)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 PHP 8.4 microservice that ingests event plans from an external XML provider and serves a
 date-range search endpoint. Symfony 8, Hexagonal Architecture, CQRS with segregated ports.
@@ -393,9 +394,8 @@ the suite exercise malformed data, failures and schema drift on demand.
 
 ## License
 
-This repository ships the full text of the **GNU General Public License v3** in
-[LICENSE](./LICENSE).
+Copyright © 2026 Cristian López.
 
-> Note: [`composer.json`](composer.json) currently declares `"license": "proprietary"`,
-> which contradicts that file. One of the two needs to change before this is published —
-> the `LICENSE` file is the legally operative document.
+This project is licensed under the **MIT License** — see [LICENSE](./LICENSE) for the full
+text. In short: use it, modify it and ship it in anything you like, commercial or not, as
+long as the copyright notice travels with it. No warranty.
