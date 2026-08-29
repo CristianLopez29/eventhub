@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<planList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0" xsi:noNamespaceSchemaLocation="planList.xsd">
+   <output>
+      <base_plan base_plan_id="6001" sell_mode="online" organizer_company_id="3" title="New Year Jazz Session">
+         <plan plan_start_date="2026-01-10T21:00:00" plan_end_date="2026-01-10T23:30:00" plan_id="8001" sell_from="2025-10-01T00:00:00" sell_to="2026-01-10T20:00:00" sold_out="false">
+            <zone zone_id="70" capacity="140" price="38.00" name="Club Floor" numbered="true" />
+         </plan>
+      </base_plan>
+      <base_plan base_plan_id="6002" sell_mode="online" organizer_company_id="14" title="Spring Book Festival">
+         <plan plan_start_date="2026-04-25T10:00:00" plan_end_date="2026-04-26T19:00:00" plan_id="8002" sell_from="2026-01-20T00:00:00" sell_to="2026-04-25T09:00:00" sold_out="false">
+            <zone zone_id="71" capacity="3000" price="12.00" name="Weekend Pass" numbered="false" />
+            <zone zone_id="72" capacity="400" price="30.00" name="Author Sessions" numbered="true" />
+         </plan>
+      </base_plan>
+      <base_plan base_plan_id="6003" sell_mode="online" organizer_company_id="15" title="Tech Conference Keynote">
+         <plan plan_start_date="2026-09-15T09:30:00" plan_end_date="2026-09-15T18:00:00" plan_id="8003" sell_from="2026-05-01T00:00:00" sell_to="2026-09-14T23:59:59" sold_out="false">
+            <zone zone_id="73" capacity="1200" price="0.00" name="Standard" numbered="false" />
+            <zone zone_id="74" capacity="200" price="95.00" name="Workshop Track" numbered="true" />
+         </plan>
+      </base_plan>
+      <base_plan base_plan_id="6004" sell_mode="offline" organizer_company_id="7" title="Private Corporate Retreat">
+         <plan plan_start_date="2026-11-05T08:00:00" plan_end_date="2026-11-07T15:00:00" plan_id="8004" sell_from="2026-07-01T00:00:00" sell_to="2026-11-01T00:00:00" sold_out="false">
+            <zone zone_id="75" capacity="60" price="0.00" name="Delegates" numbered="false" />
+         </plan>
+      </base_plan>
+      <base_plan base_plan_id="6005" sell_mode="online" organizer_company_id="16" title="Flamenco Night">
+         <plan plan_start_date="2027-03-08T20:30:00" plan_end_date="2027-03-08T22:30:00" plan_id="8005" sell_from="2026-11-01T00:00:00" sell_to="2027-03-08T19:30:00" sold_out="false">
+            <zone zone_id="76" capacity="260" price="42.00" name="Tablao" numbered="true" />
+            <zone zone_id="77" capacity="80" price="65.00" name="Front Row" numbered="true" />
+         </plan>
+      </base_plan>
+      <base_plan base_plan_id="6006" sell_mode="online" organizer_company_id="1" title="Anniversary Rock Reunion">
+         <plan plan_start_date="2027-06-20T18:30:00" plan_end_date="2027-06-20T23:59:00" plan_id="8006" sell_from="2026-12-15T00:00:00" sell_to="2027-06-20T17:00:00" sold_out="false">
+            <zone zone_id="78" capacity="4000" price="60.00" name="General Admission" numbered="false" />
+            <zone zone_id="79" capacity="500" price="120.00" name="Golden Circle" numbered="false" />
+            <zone zone_id="80" capacity="60" price="300.00" name="Meet &amp; Greet" numbered="true" />
+         </plan>
+      </base_plan>
+   </output>
+</planList>
