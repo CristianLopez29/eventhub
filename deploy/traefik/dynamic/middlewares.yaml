@@ -1,0 +1,17 @@
+http:
+  middlewares:
+    eventhub-security:
+      headers:
+        stsSeconds: 63072000
+        # includeSubDomains applies to every subdomain of this host. If anything on the
+        # box is served over plain HTTP, browsers that have seen this header will refuse
+        # to reach it.
+        stsIncludeSubdomains: true
+        stsPreload: false
+        contentTypeNosniff: true
+        frameDeny: true
+        referrerPolicy: strict-origin-when-cross-origin
+        customResponseHeaders:
+          # PHP already sets expose_php=Off; this covers anything else in the chain.
+          X-Powered-By: ''
+          Server: ''
