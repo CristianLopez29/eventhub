@@ -1,6 +1,8 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
+import { htmlReport } from 'https://cdn.jsdelivr.net/gh/benc-uk/k6-reporter@2.4.0/dist/bundle.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://nginx';
 const USERNAME = __ENV.API_USERNAME || 'admin';
@@ -91,4 +93,16 @@ export default function (data) {
             return typeof JSON.parse(r.body).data.meta.total === 'number';
         },
     });
+}
+
+// Writes the console summary and an HTML report next to the script (tests/Load/results/
+// when run through `make load-test`), so the numbers in the README have their source
+// committed beside them. The two imports at the top are fetched from a CDN at start, so a
+// run needs outbound network the same way pulling the grafana/k6 image does.
+export function handleSummary(data) {
+    return {
+        stdout: textSummary(data, { indent: ' ', enableColors: true }),
+        'summary.txt': textSummary(data, { indent: ' ', enableColors: false }),
+        'report.html': htmlReport(data),
+    };
 }
