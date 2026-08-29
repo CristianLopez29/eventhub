@@ -98,7 +98,12 @@ Fill in every `<...>` placeholder:
 ```bash
 openssl rand -hex 32        # APP_SECRET, HEALTHCHECK_TOKEN, JWT_PASSPHRASE
 openssl rand -base64 24     # DB_PASSWORD, DB_ROOT_PASSWORD, REDIS_PASSWORD
+openssl rand -base64 18     # DOCS_PASSWORD
 ```
+
+`SENTRY_DSN` is optional - paste a project DSN from sentry.io to turn on error reporting,
+or leave it blank and the SDK does nothing. `DOCS_PASSWORD` **must** be set: with `APP_ENV`
+= `prod` an empty one makes `/api/doc` answer `503` rather than opening to the world.
 
 `APP_DOMAIN` is what Traefik matches on. **Point its A record at the VPS before starting
 the container** - Traefik's TLS-ALPN challenge fails otherwise, and repeated failures hit
@@ -157,8 +162,15 @@ curl -s https://$DOMAIN/health                         # {"data":{"status":"ok"}
 curl -so /dev/null -w '%{http_code}\n' https://$DOMAIN/health/ready
 curl -s -H "X-Health-Check-Token: $TOKEN" https://$DOMAIN/health/ready
 
-# Headers: no X-Powered-By, HSTS present
-curl -sI https://$DOMAIN/health | grep -iE 'x-powered-by|strict-transport|x-frame'
+# Headers: no X-Powered-By, HSTS + CSP + nosniff present
+curl -sI https://$DOMAIN/health | grep -iE 'x-powered-by|strict-transport|x-frame|content-security|x-content-type'
+
+# Rate limit: a burst of requests eventually gets a 429 from Traefik
+for i in $(seq 1 200); do curl -so /dev/null -w '%{http_code} ' https://$DOMAIN/health; done; echo
+
+# Docs are gated: 401 without credentials, 200 with them
+curl -so /dev/null -w '%{http_code}\n' https://$DOMAIN/api/doc
+curl -so /dev/null -w '%{http_code}\n' -u "$DOCS_USERNAME:$DOCS_PASSWORD" https://$DOMAIN/api/doc
 
 # Arbitrary .php must not execute
 curl -so /dev/null -w '%{http_code}\n' https://$DOMAIN/index2.php   # 404
@@ -176,9 +188,9 @@ curl -s "https://$DOMAIN/events?starts_at=2024-01-01T00:00:00&ends_at=2024-12-31
 either is down, so an uptime monitor can alert on it. Point UptimeRobot at it with the
 token as a custom header.
 
-Swagger UI is at `https://$DOMAIN/api/doc` and is **public**, as it is locally. If that is
-not wanted on a deployed instance, put it behind a Traefik basic-auth middleware - the app
-does not gate it.
+Swagger UI is at `https://$DOMAIN/api/doc`. Unlike locally, a deployed instance gates it
+with HTTP Basic auth (`DOCS_USERNAME` / `DOCS_PASSWORD`); with no password set it answers
+`503`. `/api/doc.json` is gated the same way.
 
 ---
 
@@ -201,9 +213,12 @@ code in memory.
 
 | Where | What |
 |-------|------|
-| `docker compose -f compose.prod.yaml logs -f app` | nginx access log + php-fpm + application errors |
-| `docker compose -f compose.prod.yaml logs -f scheduler` | Each provider sync and its inserted/updated/skipped tally |
+| `docker compose -f compose.prod.yaml logs -f app` | nginx access log (stdout, plain) + application log (stderr, one JSON object per line) |
+| `docker compose -f compose.prod.yaml logs -f scheduler` | Each provider sync: a plain tally on stdout, per-event detail as JSON on stderr |
 | `docker compose logs -f traefik` (in `/srv/traefik`) | Edge access log and ACME certificate events |
+
+Pipe the app log through `jq` to read it: `... logs app | grep '^{' | jq .`. If `SENTRY_DSN`
+is set, every 5xx also lands in Sentry with its stack trace.
 
 Cap Docker's own log growth in `/etc/docker/daemon.json`:
 
@@ -248,6 +263,10 @@ cannot starve the others; `docker stats` shows actual use.
 - **HSTS is sent with `includeSubDomains`** and a two-year max-age. If any subdomain on
   this box is not served over HTTPS, browsers that have seen the header will refuse to
   reach it.
+- **Rate limiting is per Traefik instance, in memory.** [`deploy/traefik/dynamic/middlewares.yaml`](deploy/traefik/dynamic/middlewares.yaml)
+  caps each client IP at 120 req/min (burst 60) across every route. Fine for one node; a
+  multi-node edge would need a shared store. Behind Cloudflare, raise `ipStrategy.depth`
+  so the limit keys on the real client, not Cloudflare's egress.
 
 ---
 

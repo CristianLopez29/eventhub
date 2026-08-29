@@ -38,7 +38,7 @@ services:
       traefik.http.routers.eventhub.entrypoints: websecure
       traefik.http.routers.eventhub.tls: 'true'
       traefik.http.routers.eventhub.tls.certresolver: letsencrypt
-      traefik.http.routers.eventhub.middlewares: eventhub-security@file
+      traefik.http.routers.eventhub.middlewares: eventhub-ratelimit@file,eventhub-security@file
       traefik.http.services.eventhub.loadbalancer.server.port: '8080'
 
   scheduler:

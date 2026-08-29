@@ -1,0 +1,23 @@
+     ✓ status is 200
+     ✓ body carries the envelope
+     ✓ pagination meta is present
+
+     checks.........................: 100.00% ✓ 6075      ✗ 0   
+     data_received..................: 4.3 MB  137 kB/s
+     data_sent......................: 2.0 MB  63 kB/s
+     http_req_blocked...............: avg=6.07µs  min=2µs     med=4.3µs   max=914.6µs  p(90)=6.2µs   p(95)=6.9µs  
+     http_req_connecting............: avg=505ns   min=0s      med=0s      max=247.8µs  p(90)=0s      p(95)=0s     
+     http_req_duration..............: avg=63.06ms min=42.01ms med=59.98ms max=914.95ms p(90)=77.61ms p(95)=84.36ms
+       { expected_response:true }...: avg=63.06ms min=42.01ms med=59.98ms max=914.95ms p(90)=77.61ms p(95)=84.36ms
+   ✓ http_req_failed................: 0.00%   ✓ 0         ✗ 2031
+     http_req_receiving.............: avg=3.89ms  min=1.83ms  med=3.68ms  max=29.37ms  p(90)=4.9ms   p(95)=5.53ms 
+     http_req_sending...............: avg=24.03µs min=8.1µs   med=24µs    max=291.7µs  p(90)=33.3µs  p(95)=36.7µs 
+     http_req_tls_handshaking.......: avg=0s      min=0s      med=0s      max=0s       p(90)=0s      p(95)=0s     
+     http_req_waiting...............: avg=59.14ms min=38.15ms med=56.06ms max=905.63ms p(90)=73.67ms p(95)=80.36ms
+     http_reqs......................: 2031    64.666516/s
+     iteration_duration.............: avg=62.99ms min=42.33ms med=60.45ms max=135.15ms p(90)=78.02ms p(95)=84.56ms
+     iterations.....................: 2025    64.475477/s
+   ✓ search_duration................: avg=62.56ms min=42.01ms med=59.98ms max=134.31ms p(90)=77.59ms p(95)=84.18ms
+   ✓ server_errors..................: 0       0/s
+     vus............................: 1       min=0       max=5 
+     vus_max........................: 5       min=5       max=5 

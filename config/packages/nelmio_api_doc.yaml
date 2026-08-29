@@ -75,6 +75,13 @@ nelmio_api_doc:
                                                         type: string
                                                         example: Invalid credentials.
 
+    # Serve Swagger UI's own CSS and JS from this origin (public/bundles/nelmioapidoc,
+    # populated by `assets:install`) instead of the jsDelivr CDN the bundle defaults to.
+    # The page then loads under a Content-Security-Policy that allows 'self' and no third
+    # party, and it keeps working with no outbound network.
+    html_config:
+        assets_mode: bundle
+
     areas:
         default:
             path_patterns:

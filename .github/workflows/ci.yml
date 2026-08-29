@@ -30,7 +30,6 @@ jobs:
     env:
       DATABASE_URL: mysql://root:root@127.0.0.1:3306/eventhub?serverVersion=8.0.32&charset=utf8mb4
       REDIS_URL: redis://127.0.0.1:6379
-      MESSENGER_TRANSPORT_DSN: redis://127.0.0.1:6379/messages
       APP_ENV: test
 
     steps:
@@ -96,3 +95,11 @@ jobs:
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src -l 9 --memory-limit=512M
+
+      # The prod container wires up Monolog and Sentry differently from test; compile it here
+      # so a broken monolog.yaml or sentry.yaml fails the build rather than the VPS at boot.
+      - name: Validate the production service container
+        env:
+          APP_ENV: prod
+          APP_DEBUG: '0'
+        run: php bin/console lint:container

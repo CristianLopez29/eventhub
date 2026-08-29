@@ -1,5 +1,19 @@
 http:
   middlewares:
+    # Per-client-IP throttle at the edge, in front of everything this app serves. The app's
+    # own login_throttling (5 failed attempts/minute) still runs behind it; this is the
+    # coarse limit that blunts scraping of /events and blind brute force before either
+    # reaches PHP. depth 0 keys on the connection's source address, correct while Traefik
+    # terminates TLS directly — an app behind Cloudflare would raise it.
+    eventhub-ratelimit:
+      rateLimit:
+        average: 120
+        period: 1m
+        burst: 60
+        sourceCriterion:
+          ipStrategy:
+            depth: 0
+
     eventhub-security:
       headers:
         stsSeconds: 63072000

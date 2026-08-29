@@ -1,0 +1,25 @@
+sentry:
+    # An empty DSN initialises the SDK but sends nothing, so dev, test and CI are untouched
+    # until SENTRY_DSN is set on the server. This is the only switch that turns Sentry on.
+    dsn: '%env(default::SENTRY_DSN)%'
+
+    # Capture unhandled exceptions from both the HTTP kernel and console commands. Deliberate
+    # error-level logs that never throw (a provider fetch that exhausted its retries, a
+    # readiness probe that could not reach a dependency) are left to the structured logs and
+    # the /health/ready monitor rather than duplicated here.
+    register_error_listener: true
+    register_error_handler: true
+
+    options:
+        # No request bodies, no client IPs, no usernames leave the process.
+        send_default_pii: false
+        # Errors only. Performance tracing is off — it is not what a low-traffic portfolio
+        # service needs and it multiplies the event volume.
+        traces_sample_rate: 0.0
+        # A DomainException is a validated 4xx answer to a bad request and a 404/405 is
+        # routing: neither is a fault worth an alert, and reporting them would bury the real
+        # 5xx. Matched against the class hierarchy, so the interface covers all four.
+        ignore_exceptions:
+            - App\EventIntegration\Domain\Exceptions\DomainException
+            - Symfony\Component\HttpKernel\Exception\NotFoundHttpException
+            - Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException

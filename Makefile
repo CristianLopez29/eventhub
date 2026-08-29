@@ -104,7 +104,12 @@ coverage: ## Run the suite with line coverage (needs pcov or xdebug in the conta
 
 load-test: ## Run stress test with k6 (see tests/Load/README.md)
 	@echo "Running load test against the local stack..."
-	docker run --rm -i --network eventhub_default -e BASE_URL=http://nginx grafana/k6 run - < tests/Load/stress.js
+	@mkdir -p tests/Load/results
+	# MSYS_NO_PATHCONV and the doubled slash stop Git Bash on Windows from rewriting the
+	# container-side paths; both are no-ops on Linux and macOS.
+	MSYS_NO_PATHCONV=1 docker run --rm -i --network eventhub_default -e BASE_URL=http://nginx \
+		-v "$(CURDIR)/tests/Load/results://out" -w //out \
+		grafana/k6 run - < tests/Load/stress.js
 
 # --- Utilities ---
 cache-clear: ## Clear Symfony and Redis cache
