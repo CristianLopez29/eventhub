@@ -7,11 +7,23 @@ namespace App\Tests\EventIntegration\Integration;
 use App\EventIntegration\Domain\Repositories\SaveEventRepository;
 use App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository;
 use App\Tests\EventIntegration\Builders\EventBuilder;
+use App\Tests\EventIntegration\Support\CleansUpItsOwnData;
 use DateTimeImmutable;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class RedisCachedEventRepositoryTest extends KernelTestCase
 {
+    use CleansUpItsOwnData;
+
+    protected function tearDown(): void
+    {
+        if (static::$booted) {
+            $this->removeRowsCreatedByThisTest();
+        }
+
+        parent::tearDown();
+    }
+
     private SaveEventRepository $writeRepository;
     private RedisCachedEventRepository $cachedRepository;
 
@@ -22,19 +34,8 @@ final class RedisCachedEventRepositoryTest extends KernelTestCase
         $this->writeRepository = self::getContainer()->get(SaveEventRepository::class);
         $this->cachedRepository = self::getContainer()->get(RedisCachedEventRepository::class);
 
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->cachedRepository->invalidateSearchCache();
-    }
-
-    private function cleanDatabase(): void
-    {
-        $entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
-        $connection = $entityManager->getConnection();
-
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
-        $connection->executeStatement('TRUNCATE TABLE zones');
-        $connection->executeStatement('TRUNCATE TABLE events');
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
     }
 
     public function test_should_cache_find_by_id(): void

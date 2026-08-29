@@ -1,0 +1,42 @@
+# The shared edge proxy. Deployed once per host, in /srv/traefik — not per application.
+# It is the only container on the box that publishes a port.
+name: traefik
+
+services:
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      # Nothing is routed unless it opts in with traefik.enable=true, so a new container
+      # is never exposed to the internet by accident.
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=edge
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --accesslog=true
+      - --log.level=INFO
+    ports:
+      - '80:80'
+      - '443:443'
+    networks:
+      - edge
+    volumes:
+      # Read-only: the proxy needs to discover containers, not control the daemon.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./dynamic:/etc/traefik/dynamic:ro
+      - letsencrypt:/letsencrypt
+
+networks:
+  edge:
+    external: true
+
+volumes:
+  letsencrypt:
