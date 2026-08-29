@@ -124,7 +124,9 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
 
         $results = $this->readRepository->searchByDateRange(
             new DateTimeImmutable('2024-06-01 00:00:00'),
-            new DateTimeImmutable('2024-07-31 23:59:59')
+            new DateTimeImmutable('2024-07-31 23:59:59'),
+            50,
+            0
         );
 
         self::assertCount(2, $results);
@@ -136,7 +138,9 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
     {
         $results = $this->readRepository->searchByDateRange(
             new DateTimeImmutable('2025-01-01 00:00:00'),
-            new DateTimeImmutable('2025-12-31 23:59:59')
+            new DateTimeImmutable('2025-12-31 23:59:59'),
+            50,
+            0
         );
 
         self::assertSame([], $results);
@@ -155,7 +159,9 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
 
         $results = $this->readRepository->searchByDateRange(
             new DateTimeImmutable('2023-01-01 00:00:00'),
-            new DateTimeImmutable('2023-01-31 23:59:59')
+            new DateTimeImmutable('2023-01-31 23:59:59'),
+            50,
+            0
         );
 
         self::assertCount(1, $results);

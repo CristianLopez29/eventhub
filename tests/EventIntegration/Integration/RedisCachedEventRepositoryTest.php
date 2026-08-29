@@ -69,8 +69,8 @@ final class RedisCachedEventRepositoryTest extends KernelTestCase
         $startsAt = new DateTimeImmutable('2024-06-01 00:00:00');
         $endsAt = new DateTimeImmutable('2024-06-30 23:59:59');
 
-        $first = $this->cachedRepository->searchByDateRange($startsAt, $endsAt);
-        $second = $this->cachedRepository->searchByDateRange($startsAt, $endsAt);
+        $first = $this->cachedRepository->searchByDateRange($startsAt, $endsAt, 50, 0);
+        $second = $this->cachedRepository->searchByDateRange($startsAt, $endsAt, 50, 0);
 
         self::assertCount(1, $first);
         self::assertCount(1, $second);
@@ -115,7 +115,7 @@ final class RedisCachedEventRepositoryTest extends KernelTestCase
         $startsAt = new DateTimeImmutable('2024-06-01 00:00:00');
         $endsAt = new DateTimeImmutable('2024-06-30 23:59:59');
 
-        $this->cachedRepository->searchByDateRange($startsAt, $endsAt);
+        $this->cachedRepository->searchByDateRange($startsAt, $endsAt, 50, 0);
 
         $entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
         $connection = $entityManager->getConnection();
@@ -127,7 +127,7 @@ final class RedisCachedEventRepositoryTest extends KernelTestCase
 
         $this->cachedRepository->invalidateSearchCache();
 
-        $results = $this->cachedRepository->searchByDateRange($startsAt, $endsAt);
+        $results = $this->cachedRepository->searchByDateRange($startsAt, $endsAt, 50, 0);
 
         self::assertCount(1, $results);
         self::assertSame('Updated Title', $results[0]->title());

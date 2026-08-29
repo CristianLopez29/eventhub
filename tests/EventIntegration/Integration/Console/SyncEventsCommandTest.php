@@ -86,7 +86,9 @@ final class SyncEventsCommandTest extends KernelTestCase
 
         $events = $this->readRepository->searchByDateRange(
             new DateTimeImmutable('2024-08-01 00:00:00'),
-            new DateTimeImmutable('2024-08-01 23:59:59')
+            new DateTimeImmutable('2024-08-01 23:59:59'),
+            50,
+            0
         );
 
         self::assertCount(1, $events);
@@ -130,7 +132,9 @@ final class SyncEventsCommandTest extends KernelTestCase
 
         $events = $this->readRepository->searchByDateRange(
             new DateTimeImmutable('2024-09-01 00:00:00'),
-            new DateTimeImmutable('2024-09-01 23:59:59')
+            new DateTimeImmutable('2024-09-01 23:59:59'),
+            50,
+            0
         );
 
         self::assertCount(1, $events);
@@ -166,7 +170,9 @@ final class SyncEventsCommandTest extends KernelTestCase
 
         $events = $this->readRepository->searchByDateRange(
             new DateTimeImmutable('2024-10-01 00:00:00'),
-            new DateTimeImmutable('2024-10-01 23:59:59')
+            new DateTimeImmutable('2024-10-01 23:59:59'),
+            50,
+            0
         );
 
         self::assertCount(0, $events);

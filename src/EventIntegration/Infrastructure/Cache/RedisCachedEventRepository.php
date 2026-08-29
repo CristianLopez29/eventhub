@@ -44,18 +44,39 @@ final readonly class RedisCachedEventRepository implements SearchEventsRepositor
         return $this->innerRepository->exists($eventId);
     }
 
-    public function searchByDateRange(DateTimeImmutable $startsAt, DateTimeImmutable $endsAt): array
+    public function searchByDateRange(
+        DateTimeImmutable $startsAt,
+        DateTimeImmutable $endsAt,
+        int $limit,
+        int $offset
+    ): array {
+        $cacheKey = sprintf(
+            'events_search_%s_%s_%d_%d',
+            $startsAt->format('Ymd'),
+            $endsAt->format('Ymd'),
+            $limit,
+            $offset
+        );
+
+        return $this->cache->get($cacheKey, function (ItemInterface $item) use ($startsAt, $endsAt, $limit, $offset): array {
+            $item->expiresAfter(self::SEARCH_CACHE_TTL_SECONDS);
+
+            return $this->innerRepository->searchByDateRange($startsAt, $endsAt, $limit, $offset);
+        });
+    }
+
+    public function countByDateRange(DateTimeImmutable $startsAt, DateTimeImmutable $endsAt): int
     {
         $cacheKey = sprintf(
-            'events_search_%s_%s',
+            'events_count_%s_%s',
             $startsAt->format('Ymd'),
             $endsAt->format('Ymd')
         );
 
-        return $this->cache->get($cacheKey, function (ItemInterface $item) use ($startsAt, $endsAt): array {
+        return $this->cache->get($cacheKey, function (ItemInterface $item) use ($startsAt, $endsAt): int {
             $item->expiresAfter(self::SEARCH_CACHE_TTL_SECONDS);
 
-            return $this->innerRepository->searchByDateRange($startsAt, $endsAt);
+            return $this->innerRepository->countByDateRange($startsAt, $endsAt);
         });
     }
 

@@ -8,6 +8,7 @@ use App\EventIntegration\Application\DTOs\SearchEventsInput;
 use App\EventIntegration\Application\Transformers\EventTransformer;
 use App\EventIntegration\Application\UseCases\SearchEvents;
 use App\EventIntegration\Domain\Exceptions\InvalidDateFormatException;
+use App\EventIntegration\Domain\Exceptions\InvalidPaginationException;
 use App\EventIntegration\Domain\Exceptions\MissingSearchCriteriaException;
 use App\EventIntegration\Infrastructure\Http\ApiResponse;
 use DateTimeImmutable;
@@ -45,6 +46,20 @@ final readonly class SearchEventsController
                 description: 'Range end (inclusive), format YYYY-MM-DDTHH:mm:ss',
                 schema: new OA\Schema(type: 'string', example: '2021-07-31T23:59:59')
             ),
+            new OA\Parameter(
+                name: 'page',
+                in: 'query',
+                required: false,
+                description: 'Page number, 1-based',
+                schema: new OA\Schema(type: 'integer', default: 1, minimum: 1)
+            ),
+            new OA\Parameter(
+                name: 'per_page',
+                in: 'query',
+                required: false,
+                description: 'Events per page',
+                schema: new OA\Schema(type: 'integer', default: SearchEventsInput::DEFAULT_PER_PAGE, maximum: SearchEventsInput::MAX_PER_PAGE, minimum: 1)
+            ),
         ],
         responses: [
             new OA\Response(
@@ -71,6 +86,16 @@ final readonly class SearchEventsController
                                         ],
                                         type: 'object'
                                     )
+                                ),
+                                new OA\Property(
+                                    property: 'meta',
+                                    properties: [
+                                        new OA\Property(property: 'page', type: 'integer', example: 1),
+                                        new OA\Property(property: 'per_page', type: 'integer', example: 50),
+                                        new OA\Property(property: 'total', type: 'integer', example: 128),
+                                        new OA\Property(property: 'total_pages', type: 'integer', example: 3),
+                                    ],
+                                    type: 'object'
                                 ),
                             ],
                             type: 'object'
@@ -116,12 +141,27 @@ final readonly class SearchEventsController
 
         $searchInput = new SearchEventsInput(
             $this->parseDateTime('starts_at', $startsAtParam),
-            $this->parseDateTime('ends_at', $endsAtParam)
+            $this->parseDateTime('ends_at', $endsAtParam),
+            $this->parsePositiveInt('page', $request->query->get('page'), 1),
+            $this->parsePositiveInt('per_page', $request->query->get('per_page'), SearchEventsInput::DEFAULT_PER_PAGE)
         );
 
         return ApiResponse::success(
-            $this->transformer->transformCollection($this->searchEvents->search($searchInput))
+            $this->transformer->transformSearchResult($this->searchEvents->search($searchInput))
         );
+    }
+
+    private function parsePositiveInt(string $field, mixed $value, int $default): int
+    {
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        if (!is_string($value) || preg_match('/^\d+$/', $value) !== 1) {
+            throw InvalidPaginationException::forNonNumeric($field);
+        }
+
+        return (int) $value;
     }
 
     private function parseDateTime(string $field, string $value): DateTimeImmutable
