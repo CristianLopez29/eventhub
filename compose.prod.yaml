@@ -2,6 +2,11 @@
 # :80/:443 and reaches this app over the external `edge` network. Docker writes published
 # ports straight into iptables ahead of ufw, so a published port is reachable from the
 # internet even when the firewall reports it denied.
+#
+# This stack DOES include the simulated XML provider — there is no real third-party feed to
+# point at, and a deployed portfolio instance should have events to serve. It stays on the
+# `internal` network only, so it is never reachable from outside. Point PROVIDER_EVENTS_URL
+# at a real feed and drop this service if one ever exists.
 name: eventhub
 
 services:
@@ -56,6 +61,8 @@ services:
     depends_on:
       app:
         condition: service_started
+      provider:
+        condition: service_started
     networks:
       - internal
     volumes:
@@ -64,6 +71,25 @@ services:
       resources:
         limits:
           memory: 256M
+
+  provider:
+    build:
+      context: .
+      dockerfile: docker/provider/Dockerfile
+    restart: unless-stopped
+    environment:
+      # `static` serves the merged catalogue in resources/response_*.xml. `dynamic` emits
+      # random XML with real data-quality problems — useful for a demo of the sync's
+      # resilience, not for stable data.
+      PROVIDER_MODE: ${PROVIDER_MODE:-static}
+    networks:
+      - internal
+    expose:
+      - '8080'
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
   mysql:
     image: mysql:8.0

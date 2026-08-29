@@ -268,11 +268,16 @@ In production a `scheduler` container runs the sync every `SYNC_INTERVAL_SECONDS
 
 ### Mock provider
 
-A dedicated container simulates the external XML API:
+There is no real third-party feed, so a dedicated container simulates the external XML API
+— in **both** local and production (on the `internal` network only, never exposed):
 
-- **static** (default) — serves the fixtures in [resources/](resources/).
+- **static** (default) — the merged catalogue in [resources/](resources/): ~16 events
+  across 2024–2027.
 - **dynamic** — emits random XML with real data-quality problems (invalid dates,
   malformed prices, offline events, missing fields): `PROVIDER_MODE=dynamic make start`.
+
+`GET /events` never calls the provider — it serves whatever the scheduler has synced into
+MySQL, so an instance that has not synced yet just returns an empty list.
 
 ---
 
@@ -397,7 +402,8 @@ gotchas of running several apps on one box — are in **[DEPLOY.md](DEPLOY.md)**
 | `JWT_PASSPHRASE` | — | Protects the key pair. Generated per install; regenerate keys and passphrase together |
 | `JWT_TOKEN_TTL` | `3600` | Token lifetime in seconds |
 | `TRUSTED_PROXIES` | `172.16.0.0/12` | The Docker bridge range Traefik reaches the app from |
-| `PROVIDER_EVENTS_URL` | mock provider | The XML feed to ingest |
+| `PROVIDER_EVENTS_URL` | `http://provider:8080/events.xml` | The XML feed to ingest — the simulated `provider` container by default |
+| `PROVIDER_MODE` | `static` | `static` (merged catalogue) or `dynamic` (random XML with data-quality faults) |
 | `SYNC_INTERVAL_SECONDS` | `3600` | How often the scheduler container syncs |
 | `APP_DOMAIN` | — | Hostname Traefik routes to this app (production only) |
 | `DB_ROOT_PASSWORD` | — | Initialises the MySQL container; the app never uses it |

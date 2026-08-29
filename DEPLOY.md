@@ -21,6 +21,7 @@ for all of them.
   internal         internal         internal        internal
   mysql redis      mysql redis      mysql redis     mysql redis
                                     scheduler
+                                    provider
 ```
 
 Each app keeps its own MySQL and Redis on a private `internal` network. Nothing but
@@ -143,8 +144,15 @@ The `scheduler` container runs `app:sync-events` every `SYNC_INTERVAL_SECONDS` (
 docker compose -f compose.prod.yaml exec app php bin/console app:sync-events
 ```
 
-The mock provider container is **not** part of the production stack; point
-`PROVIDER_EVENTS_URL` at the real feed.
+There is no real third-party feed. The stack ships the **simulated `provider` container**
+(build from `docker/provider/`, `internal` network only — never internet-reachable), and
+`PROVIDER_EVENTS_URL` points at it. In `static` mode (default) it serves the merged
+catalogue in `resources/` — a stable set of ~16 events across 2024–2027; `PROVIDER_MODE=dynamic`
+emits random XML with data-quality problems to demo the sync's resilience. If a real feed
+ever exists, point `PROVIDER_EVENTS_URL` at it and delete the `provider` service.
+
+After the first sync, `GET /events` returns data. Until then it answers `200` with an
+empty list — the read path never calls the provider.
 
 ---
 
@@ -239,9 +247,9 @@ invalidates every token already issued.
 
 ### Resource use
 
-Roughly 1.2 GB with all four containers up (MySQL ~700 MB, app ~250 MB, scheduler
-~150 MB, Redis ~50 MB). `compose.prod.yaml` sets a memory limit per service so one app
-cannot starve the others; `docker stats` shows actual use.
+Roughly 1.2 GB with all five containers up (MySQL ~700 MB, app ~250 MB, scheduler
+~150 MB, Redis ~50 MB, provider ~15 MB). `compose.prod.yaml` sets a memory limit per
+service so one app cannot starve the others; `docker stats` shows actual use.
 
 ---
 
