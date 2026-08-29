@@ -14,6 +14,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTNotFoundEvent;
 use Lexik\Bundle\JWTAuthenticationBundle\Events;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Core\Exception\TooManyLoginAttemptsAuthenticationException;
 
 /**
  * Rewrites every response Lexik produces into the API envelope.
@@ -30,9 +31,24 @@ final readonly class JwtAuthenticationListener
         $event->setData(['data' => $event->getData(), 'error' => null]);
     }
 
+    /**
+     * Login throttling surfaces as an authentication failure too, so it has to be told
+     * apart here — otherwise a rate-limited caller is told their credentials are wrong and
+     * keeps retrying.
+     */
     #[AsEventListener(event: Events::AUTHENTICATION_FAILURE)]
     public function onAuthenticationFailure(AuthenticationFailureEvent $event): void
     {
+        if ($event->getException() instanceof TooManyLoginAttemptsAuthenticationException) {
+            $event->setResponse(ApiResponse::error(
+                ErrorCode::TOO_MANY_REQUESTS->value,
+                'Too many failed login attempts. Try again later.',
+                Response::HTTP_TOO_MANY_REQUESTS
+            ));
+
+            return;
+        }
+
         $event->setResponse(ApiResponse::error(
             ErrorCode::INVALID_CREDENTIALS->value,
             'Invalid credentials.',

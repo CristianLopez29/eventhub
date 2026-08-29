@@ -92,6 +92,9 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     public function test_should_return_401_in_the_envelope_when_credentials_are_wrong(): void
     {
         $client = static::createClient();
+        // Login throttling counts failed attempts per source IP across the whole suite,
+        // so a deliberate failure answers from an address of its own.
+        $client->setServerParameter('REMOTE_ADDR', '203.0.113.250');
 
         $client->request(
             'POST',

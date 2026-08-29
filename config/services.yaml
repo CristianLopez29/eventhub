@@ -3,6 +3,7 @@
 parameters:
     provider_events_url: '%env(PROVIDER_EVENTS_URL)%'
     health_check_token: '%env(string:default::HEALTHCHECK_TOKEN)%'
+    jwt_default_ttl: 3600
 
 services:
     _defaults:

@@ -20,10 +20,17 @@ security:
         login:
             pattern: ^/login
             stateless: true
+            provider: app_user_provider
             json_login:
                 check_path: /login
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
+            # Native Symfony throttling: five failed attempts per minute for a given
+            # username, and five times that for the source IP, which is what stops one
+            # host spraying many usernames. Successful logins are not counted.
+            login_throttling:
+                max_attempts: 5
+                interval: '1 minute'
         api:
             pattern: ^/
             stateless: true
