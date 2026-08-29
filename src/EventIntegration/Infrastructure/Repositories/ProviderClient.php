@@ -129,44 +129,71 @@ final readonly class ProviderClient implements ProviderClientInterface
             return null;
         }
 
-        try {
-            $startsAt = new DateTimeImmutable($startDate);
-            $endsAt = new DateTimeImmutable($endDate);
-        } catch (\Exception $e) {
-            $this->logger->warning('Invalid date in plan, skipping', [
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'error' => $e->getMessage(),
-            ]);
+        $schedule = $this->parseSchedule($startDate, $endDate);
 
+        if ($schedule === null) {
             return null;
         }
 
-        // plan_id uniquely identifies each occurrence; base_plan_id identifies the event type.
-        // Multiple plans under the same base_plan share the same base_plan_id but have different
-        // dates — using plan_id prevents later plans from overwriting earlier ones in the DB.
-        $planId = (string) ($planNode['plan_id'] ?? '');
-        $eventId = $planId !== '' ? $planId : $baseEventId;
+        [$startsAt, $endsAt] = $schedule;
 
         $event = new Event(
-            EventId::fromProviderId($eventId),
+            EventId::fromProviderId($this->resolveEventId($planNode, $baseEventId)),
             $title,
             $startsAt,
             $endsAt,
             SellMode::tryFrom($sellMode) ?? SellMode::OFFLINE,
         );
 
-        if (isset($planNode->zone)) {
-            foreach ($planNode->zone as $zoneNode) {
-                $zone = $this->parseZoneNode($zoneNode);
-
-                if ($zone !== null) {
-                    $event->addZone($zone);
-                }
-            }
+        foreach ($this->parseZones($planNode) as $zone) {
+            $event->addZone($zone);
         }
 
         return $event;
+    }
+
+    /** @return array{0: DateTimeImmutable, 1: DateTimeImmutable}|null */
+    private function parseSchedule(string $startDate, string $endDate): ?array
+    {
+        try {
+            return [new DateTimeImmutable($startDate), new DateTimeImmutable($endDate)];
+        } catch (\Exception $invalidDate) {
+            $this->logger->warning('Invalid date in plan, skipping', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'error' => $invalidDate->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * plan_id uniquely identifies each occurrence; base_plan_id identifies the event type.
+     * Multiple plans under the same base_plan share the same base_plan_id but have different
+     * dates — using plan_id prevents later plans from overwriting earlier ones in the DB.
+     */
+    private function resolveEventId(\SimpleXMLElement $planNode, string $baseEventId): string
+    {
+        $planId = (string) ($planNode['plan_id'] ?? '');
+
+        return $planId !== '' ? $planId : $baseEventId;
+    }
+
+    /** @return Zone[] */
+    private function parseZones(\SimpleXMLElement $planNode): array
+    {
+        if (!isset($planNode->zone)) {
+            return [];
+        }
+
+        $zones = [];
+
+        foreach ($planNode->zone as $zoneNode) {
+            $zones[] = $this->parseZoneNode($zoneNode);
+        }
+
+        return array_values(array_filter($zones));
     }
 
     private function parseZoneNode(\SimpleXMLElement $zoneNode): ?Zone

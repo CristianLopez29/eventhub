@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\EventIntegration\Application\Transformers;
 
+use App\EventIntegration\Application\DTOs\SearchEventsResult;
 use App\EventIntegration\Domain\Entities\Event;
 
 final class EventTransformer
@@ -29,11 +30,18 @@ final class EventTransformer
     }
 
     /**
-     * @param Event[] $events
-     * @return array{events: list<array<string, mixed>>}
+     * @return array{events: list<array<string, mixed>>, meta: array<string, int>}
      */
-    public function transformCollection(array $events): array
+    public function transformSearchResult(SearchEventsResult $searchResult): array
     {
-        return ['events' => array_values(array_map($this->transform(...), $events))];
+        return [
+            'events' => array_values(array_map($this->transform(...), $searchResult->events)),
+            'meta' => [
+                'page' => $searchResult->page,
+                'per_page' => $searchResult->perPage,
+                'total' => $searchResult->total,
+                'total_pages' => $searchResult->totalPages(),
+            ],
+        ];
     }
 }

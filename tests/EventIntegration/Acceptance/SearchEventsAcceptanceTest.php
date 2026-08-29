@@ -92,6 +92,9 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     public function test_should_return_401_in_the_envelope_when_credentials_are_wrong(): void
     {
         $client = static::createClient();
+        // Login throttling counts failed attempts per source IP across the whole suite,
+        // so a deliberate failure answers from an address of its own.
+        $client->setServerParameter('REMOTE_ADDR', '203.0.113.250');
 
         $client->request(
             'POST',
@@ -290,6 +293,101 @@ final class SearchEventsAcceptanceTest extends WebTestCase
         self::assertIsArray($response['error']);
         self::assertSame('INVALID_DATE_FORMAT', $response['error']['code']);
         self::assertNull($response['data']);
+    }
+
+    public function test_should_return_400_when_range_ends_before_it_starts(): void
+    {
+        $client = static::createClient();
+        $this->authenticateClient($client);
+
+        $client->request('GET', '/events?starts_at=2030-01-01T00:00:00&ends_at=2020-01-01T00:00:00');
+
+        self::assertResponseStatusCodeSame(400);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertNull($response['data']);
+        self::assertSame('INVALID_DATE_RANGE', $response['error']['code']);
+    }
+
+    public function test_should_return_400_when_per_page_exceeds_the_maximum(): void
+    {
+        $client = static::createClient();
+        $this->authenticateClient($client);
+
+        $client->request('GET', '/events?starts_at=2024-06-01T00:00:00&ends_at=2024-06-30T23:59:59&per_page=101');
+
+        self::assertResponseStatusCodeSame(400);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertSame('INVALID_PAGINATION', $response['error']['code']);
+    }
+
+    public function test_should_return_400_when_page_is_not_numeric(): void
+    {
+        $client = static::createClient();
+        $this->authenticateClient($client);
+
+        $client->request('GET', '/events?starts_at=2024-06-01T00:00:00&ends_at=2024-06-30T23:59:59&page=abc');
+
+        self::assertResponseStatusCodeSame(400);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertSame('INVALID_PAGINATION', $response['error']['code']);
+    }
+
+    public function test_should_paginate_events_and_report_totals(): void
+    {
+        $client = static::createClient();
+        $this->authenticateClient($client);
+        $this->cleanDatabase();
+        $this->clearCache();
+
+        $repository = self::getContainer()->get(SaveEventRepository::class);
+
+        foreach (range(1, 5) as $dayOffset) {
+            $repository->save(
+                EventBuilder::create()
+                    ->withProviderId('paged-event-' . $dayOffset)
+                    ->withTitle('Paged Event ' . $dayOffset)
+                    ->withStartsAt(new DateTimeImmutable(sprintf('2024-06-%02d 10:00:00', $dayOffset)))
+                    ->withEndsAt(new DateTimeImmutable(sprintf('2024-06-%02d 12:00:00', $dayOffset)))
+                    ->build()
+            );
+        }
+
+        $client->request('GET', '/events?starts_at=2024-06-01T00:00:00&ends_at=2024-06-30T23:59:59&page=2&per_page=2');
+
+        self::assertResponseStatusCodeSame(200);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertCount(2, $response['data']['events']);
+        self::assertSame('Paged Event 3', $response['data']['events'][0]['title']);
+        self::assertSame('Paged Event 4', $response['data']['events'][1]['title']);
+        self::assertSame(
+            ['page' => 2, 'per_page' => 2, 'total' => 5, 'total_pages' => 3],
+            $response['data']['meta']
+        );
+    }
+
+    public function test_should_return_an_empty_page_past_the_last_one(): void
+    {
+        $client = static::createClient();
+        $this->authenticateClient($client);
+        $this->cleanDatabase();
+        $this->clearCache();
+
+        $client->request('GET', '/events?starts_at=2024-06-01T00:00:00&ends_at=2024-06-30T23:59:59&page=99');
+
+        self::assertResponseStatusCodeSame(200);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertSame([], $response['data']['events']);
+        self::assertSame(0, $response['data']['meta']['total']);
     }
 
     public function test_should_return_multiple_events_sorted_by_date(): void

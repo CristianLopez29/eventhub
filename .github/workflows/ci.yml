@@ -47,6 +47,10 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      # A gate, not a report: a known-vulnerable dependency fails the build.
+      - name: Audit dependencies for known vulnerabilities
+        run: composer audit
+
       - name: Generate JWT keys
         run: |
           JWT_PASSPHRASE=$(openssl rand -hex 32)
