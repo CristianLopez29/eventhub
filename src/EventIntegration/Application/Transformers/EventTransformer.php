@@ -30,21 +30,10 @@ final class EventTransformer
 
     /**
      * @param Event[] $events
-     * @return array<string, mixed>
+     * @return array{events: list<array<string, mixed>>}
      */
     public function transformCollection(array $events): array
     {
-        $transformedEvents = [];
-
-        foreach ($events as $event) {
-            $transformedEvents[] = $this->transform($event);
-        }
-
-        return [
-            'data' => [
-                'events' => $transformedEvents,
-            ],
-            'error' => null,
-        ];
+        return ['events' => array_values(array_map($this->transform(...), $events))];
     }
 }

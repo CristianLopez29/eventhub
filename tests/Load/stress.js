@@ -22,7 +22,7 @@ export function setup() {
         { headers: { 'Content-Type': 'application/json' } }
     );
 
-    const token = loginRes.json('token');
+    const token = loginRes.json('data.token');
 
     const startsAt = '2024-06-01T00:00:00';
     const endsAt = '2024-06-30T23:59:59';

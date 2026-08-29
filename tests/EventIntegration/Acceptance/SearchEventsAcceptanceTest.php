@@ -53,12 +53,12 @@ final class SearchEventsAcceptanceTest extends WebTestCase
         );
 
         $response = json_decode($client->getResponse()->getContent(), true);
-        $token = $response['token'] ?? '';
+        $token = $response['data']['token'] ?? '';
 
         $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer ' . $token);
     }
 
-    public function test_should_return_401_without_token(): void
+    public function test_should_return_401_in_the_envelope_when_token_missing(): void
     {
         $client = static::createClient();
         $this->cleanDatabase();
@@ -67,6 +67,90 @@ final class SearchEventsAcceptanceTest extends WebTestCase
         $client->request('GET', '/events?starts_at=2024-06-01T00:00:00&ends_at=2024-06-30T23:59:59');
 
         self::assertResponseStatusCodeSame(401);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertNull($response['data']);
+        self::assertSame('AUTHENTICATION_REQUIRED', $response['error']['code']);
+    }
+
+    public function test_should_return_401_in_the_envelope_when_token_invalid(): void
+    {
+        $client = static::createClient();
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer not-a-real-token');
+
+        $client->request('GET', '/events?starts_at=2024-06-01T00:00:00&ends_at=2024-06-30T23:59:59');
+
+        self::assertResponseStatusCodeSame(401);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertNull($response['data']);
+        self::assertSame('INVALID_TOKEN', $response['error']['code']);
+    }
+
+    public function test_should_return_401_in_the_envelope_when_credentials_are_wrong(): void
+    {
+        $client = static::createClient();
+
+        $client->request(
+            'POST',
+            '/login',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['username' => 'admin', 'password' => 'wrong-password'], JSON_THROW_ON_ERROR)
+        );
+
+        self::assertResponseStatusCodeSame(401);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertNull($response['data']);
+        self::assertSame('INVALID_CREDENTIALS', $response['error']['code']);
+    }
+
+    public function test_should_return_404_in_the_envelope_for_an_unknown_route(): void
+    {
+        $client = static::createClient();
+        $this->authenticateClient($client);
+
+        $client->request('GET', '/does-not-exist');
+
+        self::assertResponseStatusCodeSame(404);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertNull($response['data']);
+        self::assertSame('NOT_FOUND', $response['error']['code']);
+    }
+
+    public function test_should_return_405_in_the_envelope_when_method_not_allowed(): void
+    {
+        $client = static::createClient();
+        $this->authenticateClient($client);
+
+        $client->request('POST', '/events');
+
+        self::assertResponseStatusCodeSame(405);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertNull($response['data']);
+        self::assertSame('METHOD_NOT_ALLOWED', $response['error']['code']);
+    }
+
+    public function test_should_wrap_the_login_token_in_the_envelope(): void
+    {
+        $client = static::createClient();
+        $this->authenticateClient($client);
+
+        $response = json_decode($client->getResponse()->getContent(), true);
+
+        self::assertNull($response['error']);
+        self::assertIsArray($response['data']);
+        self::assertArrayHasKey('token', $response['data']);
+        self::assertNotSame('', $response['data']['token']);
     }
 
     public function test_should_return_200_with_events_in_range(): void
@@ -146,10 +230,9 @@ final class SearchEventsAcceptanceTest extends WebTestCase
 
         $response = json_decode($client->getResponse()->getContent(), true);
 
-        self::assertArrayHasKey('error', $response);
         self::assertIsArray($response['error']);
-        self::assertArrayHasKey('code', $response['error']);
-        self::assertArrayHasKey('message', $response['error']);
+        self::assertSame('INVALID_PARAMETERS', $response['error']['code']);
+        self::assertStringContainsString('starts_at', $response['error']['message']);
         self::assertNull($response['data']);
     }
 
@@ -166,10 +249,9 @@ final class SearchEventsAcceptanceTest extends WebTestCase
 
         $response = json_decode($client->getResponse()->getContent(), true);
 
-        self::assertArrayHasKey('error', $response);
         self::assertIsArray($response['error']);
-        self::assertArrayHasKey('code', $response['error']);
-        self::assertArrayHasKey('message', $response['error']);
+        self::assertSame('INVALID_PARAMETERS', $response['error']['code']);
+        self::assertStringContainsString('ends_at', $response['error']['message']);
         self::assertNull($response['data']);
     }
 
@@ -186,10 +268,8 @@ final class SearchEventsAcceptanceTest extends WebTestCase
 
         $response = json_decode($client->getResponse()->getContent(), true);
 
-        self::assertArrayHasKey('error', $response);
         self::assertIsArray($response['error']);
-        self::assertArrayHasKey('code', $response['error']);
-        self::assertArrayHasKey('message', $response['error']);
+        self::assertSame('INVALID_DATE_FORMAT', $response['error']['code']);
         self::assertNull($response['data']);
     }
 

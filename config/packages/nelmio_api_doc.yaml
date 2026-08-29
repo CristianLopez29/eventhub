@@ -44,11 +44,36 @@ nelmio_api_doc:
                                     schema:
                                         type: object
                                         properties:
-                                            token:
+                                            data:
+                                                type: object
+                                                properties:
+                                                    token:
+                                                        type: string
+                                                        example: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...
+                                            error:
                                                 type: string
-                                                example: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...
+                                                nullable: true
+                                                example: null
                         '401':
                             description: Invalid credentials
+                            content:
+                                application/json:
+                                    schema:
+                                        type: object
+                                        properties:
+                                            data:
+                                                type: string
+                                                nullable: true
+                                                example: null
+                                            error:
+                                                type: object
+                                                properties:
+                                                    code:
+                                                        type: string
+                                                        example: INVALID_CREDENTIALS
+                                                    message:
+                                                        type: string
+                                                        example: Invalid credentials.
 
     areas:
         default:

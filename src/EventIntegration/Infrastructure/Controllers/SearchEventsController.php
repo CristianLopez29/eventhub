@@ -7,16 +7,19 @@ namespace App\EventIntegration\Infrastructure\Controllers;
 use App\EventIntegration\Application\DTOs\SearchEventsInput;
 use App\EventIntegration\Application\Transformers\EventTransformer;
 use App\EventIntegration\Application\UseCases\SearchEvents;
+use App\EventIntegration\Domain\Exceptions\InvalidDateFormatException;
+use App\EventIntegration\Domain\Exceptions\MissingSearchCriteriaException;
+use App\EventIntegration\Infrastructure\Http\ApiResponse;
 use DateTimeImmutable;
-use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 final readonly class SearchEventsController
 {
+    private const string DATE_FORMAT = 'Y-m-d\TH:i:s';
+
     public function __construct(
         private SearchEvents $searchEvents,
         private EventTransformer $transformer
@@ -105,63 +108,39 @@ final readonly class SearchEventsController
         $endsAtParam = $request->query->get('ends_at');
 
         if (!is_string($startsAtParam) || !is_string($endsAtParam)) {
-            return new JsonResponse(
-                [
-                    'error' => [
-                        'code' => 'INVALID_PARAMETERS',
-                        'message' => 'Missing required query parameters: starts_at and ends_at',
-                    ],
-                    'data' => null,
-                ],
-                Response::HTTP_BAD_REQUEST
-            );
+            throw MissingSearchCriteriaException::forFields(array_values(array_filter([
+                is_string($startsAtParam) ? null : 'starts_at',
+                is_string($endsAtParam) ? null : 'ends_at',
+            ])));
         }
 
-        $startsAt = $this->parseDateTime($startsAtParam);
-        $endsAt = $this->parseDateTime($endsAtParam);
+        $searchInput = new SearchEventsInput(
+            $this->parseDateTime('starts_at', $startsAtParam),
+            $this->parseDateTime('ends_at', $endsAtParam)
+        );
 
-        if ($startsAt === null || $endsAt === null) {
-            return new JsonResponse(
-                [
-                    'error' => [
-                        'code' => 'INVALID_DATE_FORMAT',
-                        'message' => 'Invalid date format. Expected: YYYY-MM-DDTHH:mm:ss',
-                    ],
-                    'data' => null,
-                ],
-                Response::HTTP_BAD_REQUEST
-            );
-        }
-
-        $input = new SearchEventsInput($startsAt, $endsAt);
-        $events = $this->searchEvents->search($input);
-
-        return new JsonResponse(
-            $this->transformer->transformCollection($events),
-            Response::HTTP_OK
+        return ApiResponse::success(
+            $this->transformer->transformCollection($this->searchEvents->search($searchInput))
         );
     }
 
-    private function parseDateTime(string $value): ?DateTimeImmutable
+    private function parseDateTime(string $field, string $value): DateTimeImmutable
     {
-        $parsed = DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', $value);
+        $parsed = DateTimeImmutable::createFromFormat(self::DATE_FORMAT, $value);
+        $parseErrors = DateTimeImmutable::getLastErrors();
 
         if ($parsed === false) {
-            return null;
+            throw InvalidDateFormatException::forField($field, $value);
         }
 
-        $errors = DateTimeImmutable::getLastErrors();
-
-        if ($errors === false) {
-            return $parsed;
+        // createFromFormat rolls "2024-13-45" over into a valid date instead of failing,
+        // so a successful parse still has to be checked against the original input.
+        if ($parseErrors !== false && ($parseErrors['error_count'] > 0 || $parseErrors['warning_count'] > 0)) {
+            throw InvalidDateFormatException::forField($field, $value);
         }
 
-        if ($errors['error_count'] > 0 || $errors['warning_count'] > 0) {
-            return null;
-        }
-
-        if ($parsed->format('Y-m-d\TH:i:s') !== $value) {
-            return null;
+        if ($parsed->format(self::DATE_FORMAT) !== $value) {
+            throw InvalidDateFormatException::forField($field, $value);
         }
 
         return $parsed;
