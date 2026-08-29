@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+.remember
+var/
+vendor/
+node_modules/
+tests/
+docker/provider/
+config/jwt/*.pem
+.env.local
+.env.*.local
+coverage.xml

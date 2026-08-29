@@ -8,11 +8,23 @@ use App\EventIntegration\Domain\Repositories\SaveEventRepository;
 use App\EventIntegration\Domain\Repositories\SearchEventsRepository;
 use App\EventIntegration\Domain\ValueObjects\EventId;
 use App\Tests\EventIntegration\Builders\EventBuilder;
+use App\Tests\EventIntegration\Support\CleansUpItsOwnData;
 use DateTimeImmutable;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class DoctrineEventRepositoryTest extends KernelTestCase
 {
+    use CleansUpItsOwnData;
+
+    protected function tearDown(): void
+    {
+        if (static::$booted) {
+            $this->removeRowsCreatedByThisTest();
+        }
+
+        parent::tearDown();
+    }
+
     private SaveEventRepository $writeRepository;
     private SearchEventsRepository $readRepository;
 
@@ -23,18 +35,7 @@ final class DoctrineEventRepositoryTest extends KernelTestCase
         $this->writeRepository = self::getContainer()->get(SaveEventRepository::class);
         $this->readRepository = self::getContainer()->get(SearchEventsRepository::class);
 
-        $this->cleanDatabase();
-    }
-
-    private function cleanDatabase(): void
-    {
-        $entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
-        $connection = $entityManager->getConnection();
-
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
-        $connection->executeStatement('TRUNCATE TABLE zones');
-        $connection->executeStatement('TRUNCATE TABLE events');
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+        $this->rememberExistingRows();
     }
 
     public function test_should_save_and_retrieve_event(): void

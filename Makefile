@@ -3,7 +3,7 @@ DOCKER_COMPOSE = docker compose -f compose.yaml
 PHP_CONT       = $(DOCKER_COMPOSE) exec php
 CONSOLE        = $(PHP_CONT) bin/console
 
-.PHONY: help run init start stop build all setup bash test stan load-test jwt-keys app-secret set-env audit
+.PHONY: help run init start stop build all setup bash test stan load-test jwt-keys app-secret set-env audit coverage
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-20s %s\n", $$1, $$2}'
@@ -99,8 +99,11 @@ stan: ## Run static analysis with PHPStan at level 9
 audit: ## Check installed dependencies against known vulnerability advisories
 	$(PHP_CONT) composer audit
 
-load-test: ## Run stress test with k6
-	@echo "Running load test..."
+coverage: ## Run the suite with line coverage (needs pcov or xdebug in the container)
+	$(PHP_CONT) vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-text
+
+load-test: ## Run stress test with k6 (see tests/Load/README.md)
+	@echo "Running load test against the local stack..."
 	docker run --rm -i --network eventhub_default -e BASE_URL=http://nginx grafana/k6 run - < tests/Load/stress.js
 
 # --- Utilities ---

@@ -12,6 +12,7 @@ use App\EventIntegration\Domain\Repositories\SearchEventsRepository;
 use App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository;
 use App\EventIntegration\Infrastructure\Repositories\ProviderClient;
 use App\Tests\EventIntegration\Builders\EventBuilder;
+use App\Tests\EventIntegration\Support\CleansUpItsOwnData;
 use DateTimeImmutable;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -19,6 +20,17 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class SyncEventsCommandTest extends KernelTestCase
 {
+    use CleansUpItsOwnData;
+
+    protected function tearDown(): void
+    {
+        if (static::$booted) {
+            $this->removeRowsCreatedByThisTest();
+        }
+
+        parent::tearDown();
+    }
+
     private CommandTester $commandTester;
     private SaveEventRepository $writeRepository;
     private SearchEventsRepository $readRepository;
@@ -34,19 +46,8 @@ final class SyncEventsCommandTest extends KernelTestCase
         $this->writeRepository = self::getContainer()->get(SaveEventRepository::class);
         $this->readRepository = self::getContainer()->get(SearchEventsRepository::class);
 
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
-    }
-
-    private function cleanDatabase(): void
-    {
-        $entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
-        $connection = $entityManager->getConnection();
-
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
-        $connection->executeStatement('TRUNCATE TABLE zones');
-        $connection->executeStatement('TRUNCATE TABLE events');
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
     }
 
     private function clearCache(): void

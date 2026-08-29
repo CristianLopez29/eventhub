@@ -2,6 +2,14 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
+    # Traefik reaches this container over a Docker bridge network in 172.16.0.0/12.
+    # Without trusting it, every request appears to come from the proxy's address and the
+    # per-IP login limiter collapses into a single shared bucket. Never widen this to a
+    # wildcard on a host that is also reachable directly: that lets any caller spoof their
+    # address with a forged X-Forwarded-For.
+    trusted_proxies: '%env(default:default_trusted_proxies:TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port']
+
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 

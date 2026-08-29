@@ -1,0 +1,27 @@
+# Codecov configuration.
+#
+# Every status is informational: Codecov reports the number and the per-pull-request diff
+# but never posts a failing check. Coverage is a signal here, not a gate — the gates that
+# block a merge are PHPStan level 9, `composer audit` and the PHPUnit suite
+# (see .github/workflows/ci.yml).
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...90"
+
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+comment:
+  layout: "reach, diff, files"
+  require_changes: true
+
+# No `ignore` list on purpose: phpunit.xml.dist's <source> block already scopes the report
+# to src/, so tests/, config/, migrations/ and public/ never reach the clover file.
+# Listing them here would be configuration that matches nothing.
