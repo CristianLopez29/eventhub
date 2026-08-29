@@ -42,7 +42,7 @@ jobs:
         with:
           php-version: '8.4'
           extensions: mbstring, xml, ctype, iconv, pdo_mysql, redis
-          coverage: none
+          coverage: pcov
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
@@ -64,8 +64,29 @@ jobs:
           php bin/console doctrine:database:create --if-not-exists
           php bin/console doctrine:migrations:migrate --no-interaction
 
-      - name: Run PHPUnit
-        run: php bin/phpunit
+      # vendor/bin/phpunit rather than bin/phpunit: the symfony/phpunit-bridge wrapper
+      # re-executes the run through its own installation, which loses the coverage driver
+      # and leaves the clover file empty. Same suites, same bootstrap.
+      - name: Run PHPUnit with coverage
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
+
+      # fail_ci_if_error stays false on purpose: a Codecov outage, or a pull request from a
+      # fork where secrets are not exposed, must not turn the test gate red. Coverage is a
+      # signal here, never a gate.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+      - name: Keep the coverage report as an artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-clover
+          path: coverage.xml
+          retention-days: 14
 
       - name: Warm Symfony cache for PHPStan
         env:
