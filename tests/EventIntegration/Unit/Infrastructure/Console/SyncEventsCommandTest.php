@@ -11,7 +11,6 @@ use App\EventIntegration\Domain\Repositories\ProviderClientInterface;
 use App\EventIntegration\Domain\Repositories\SaveEventRepository;
 use App\EventIntegration\Infrastructure\Console\SyncEventsCommand;
 use App\Tests\EventIntegration\Builders\EventBuilder;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -40,8 +39,7 @@ final class SyncEventsCommandTest extends TestCase
         );
     }
 
-    #[Test]
-    public function should_sync_events_and_purge_cache(): void
+    public function test_should_sync_events_and_purge_cache(): void
     {
         $events = [
             EventBuilder::create()->withProviderId('evt-1')->withTitle('Concert A')->build(),
@@ -65,8 +63,7 @@ final class SyncEventsCommandTest extends TestCase
         self::assertStringContainsString('Redis cache purged', $output);
     }
 
-    #[Test]
-    public function should_handle_empty_provider_response(): void
+    public function test_should_handle_empty_provider_response(): void
     {
         $this->providerClient
             ->expects($this->once())
@@ -85,8 +82,7 @@ final class SyncEventsCommandTest extends TestCase
         self::assertStringContainsString('Provider returned no events or API failed', $output);
     }
 
-    #[Test]
-    public function should_purge_cache_after_successful_sync(): void
+    public function test_should_purge_cache_after_successful_sync(): void
     {
         $events = [
             EventBuilder::create()->withProviderId('evt-1')->withTitle('Concert A')->build(),

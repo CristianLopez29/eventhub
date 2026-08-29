@@ -11,7 +11,6 @@ use App\EventIntegration\Domain\Entities\Event;
 use App\EventIntegration\Domain\Enums\SellMode;
 use App\EventIntegration\Domain\Repositories\SaveEventRepository;
 use App\Tests\EventIntegration\Builders\EventBuilder;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -31,8 +30,7 @@ final class SyncProviderEventsTest extends TestCase
         $this->useCase = new SyncProviderEvents($this->eventRepository, $this->logger, $this->cacheInvalidator);
     }
 
-    #[Test]
-    public function should_insert_new_online_events(): void
+    public function test_should_insert_new_online_events(): void
     {
         $event = EventBuilder::create()
             ->withProviderId('evt-1')
@@ -68,8 +66,7 @@ final class SyncProviderEventsTest extends TestCase
         self::assertSame(0, $result->skippedCount);
     }
 
-    #[Test]
-    public function should_update_existing_online_events(): void
+    public function test_should_update_existing_online_events(): void
     {
         $event = EventBuilder::create()
             ->withProviderId('evt-1')
@@ -98,8 +95,7 @@ final class SyncProviderEventsTest extends TestCase
         self::assertSame(0, $result->skippedCount);
     }
 
-    #[Test]
-    public function should_skip_offline_events(): void
+    public function test_should_skip_offline_events(): void
     {
         $event = EventBuilder::create()
             ->withProviderId('evt-1')
@@ -125,8 +121,7 @@ final class SyncProviderEventsTest extends TestCase
         self::assertSame(1, $result->skippedCount);
     }
 
-    #[Test]
-    public function should_save_multiple_online_events(): void
+    public function test_should_save_multiple_online_events(): void
     {
         $events = [
             EventBuilder::create()->withProviderId('evt-1')->withTitle('Concert A')->build(),
@@ -150,8 +145,7 @@ final class SyncProviderEventsTest extends TestCase
         self::assertSame(0, $result->skippedCount);
     }
 
-    #[Test]
-    public function should_persist_event_with_zones(): void
+    public function test_should_persist_event_with_zones(): void
     {
         $event = EventBuilder::create()
             ->withProviderId('evt-1')
@@ -185,8 +179,7 @@ final class SyncProviderEventsTest extends TestCase
         $this->useCase->sync($input);
     }
 
-    #[Test]
-    public function should_mixed_insert_update_and_skip(): void
+    public function test_should_mixed_insert_update_and_skip(): void
     {
         $events = [
             EventBuilder::create()->withProviderId('evt-1')->withTitle('Concert A')->build(),

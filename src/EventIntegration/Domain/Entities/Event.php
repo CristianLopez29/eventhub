@@ -61,36 +61,24 @@ final class Event
 
     public function minPrice(): ?Price
     {
-        if ($this->zones === []) {
-            return null;
-        }
-
-        $minPrice = $this->zones[0]->price();
-
-        foreach ($this->zones as $zone) {
-            if ($zone->price()->lessThan($minPrice)) {
-                $minPrice = $zone->price();
-            }
-        }
-
-        return $minPrice;
+        return $this->foldPrices(static fn (Price $cheapest, Price $candidate): Price => $candidate->lessThan($cheapest) ? $candidate : $cheapest);
     }
 
     public function maxPrice(): ?Price
+    {
+        return $this->foldPrices(static fn (Price $dearest, Price $candidate): Price => $candidate->greaterThan($dearest) ? $candidate : $dearest);
+    }
+
+    /** @param callable(Price, Price): Price $pick */
+    private function foldPrices(callable $pick): ?Price
     {
         if ($this->zones === []) {
             return null;
         }
 
-        $maxPrice = $this->zones[0]->price();
+        $prices = array_map(static fn (Zone $zone): Price => $zone->price(), $this->zones);
 
-        foreach ($this->zones as $zone) {
-            if ($zone->price()->greaterThan($maxPrice)) {
-                $maxPrice = $zone->price();
-            }
-        }
-
-        return $maxPrice;
+        return array_reduce($prices, $pick, $prices[0]);
     }
 
     public function isOnline(): bool

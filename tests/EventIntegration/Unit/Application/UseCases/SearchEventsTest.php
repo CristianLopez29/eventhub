@@ -9,7 +9,6 @@ use App\EventIntegration\Application\UseCases\SearchEvents;
 use App\EventIntegration\Domain\Repositories\SearchEventsRepository;
 use App\Tests\EventIntegration\Builders\EventBuilder;
 use DateTimeImmutable;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -24,8 +23,7 @@ final class SearchEventsTest extends TestCase
         $this->useCase = new SearchEvents($this->eventRepository);
     }
 
-    #[Test]
-    public function should_return_events_within_date_range(): void
+    public function test_should_return_events_within_date_range(): void
     {
         $startsAt = new DateTimeImmutable('2024-06-01 00:00:00');
         $endsAt = new DateTimeImmutable('2024-06-30 23:59:59');
@@ -55,8 +53,7 @@ final class SearchEventsTest extends TestCase
         $this->assertSame(1, $searchResult->totalPages());
     }
 
-    #[Test]
-    public function should_return_empty_array_when_no_events_found(): void
+    public function test_should_return_empty_array_when_no_events_found(): void
     {
         $startsAt = new DateTimeImmutable('2024-01-01 00:00:00');
         $endsAt = new DateTimeImmutable('2024-01-31 23:59:59');
@@ -77,8 +74,7 @@ final class SearchEventsTest extends TestCase
         $this->assertSame(0, $searchResult->total);
     }
 
-    #[Test]
-    public function should_delegate_exact_dates_to_repository(): void
+    public function test_should_delegate_exact_dates_to_repository(): void
     {
         $startsAt = new DateTimeImmutable('2024-12-25 00:00:00');
         $endsAt = new DateTimeImmutable('2024-12-25 23:59:59');

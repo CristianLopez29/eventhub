@@ -9,6 +9,13 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class EventId
 {
+    /**
+     * RFC 9562's DNS namespace. Any fixed namespace works; what matters is that it never
+     * changes, because the v5 hash of a provider id is this event's primary key and a new
+     * namespace would re-key every stored event.
+     */
+    private const string PROVIDER_ID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+
     public function __construct(
         private string $value
     ) {
@@ -19,7 +26,7 @@ final readonly class EventId
 
     public static function fromProviderId(string $providerId): self
     {
-        $uuid = Uuid::v5(Uuid::fromString('6ba7b810-9dad-11d1-80b4-00c04fd430c8'), $providerId);
+        $uuid = Uuid::v5(Uuid::fromString(self::PROVIDER_ID_NAMESPACE), $providerId);
 
         return new self($uuid->toRfc4122());
     }

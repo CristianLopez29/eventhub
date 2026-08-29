@@ -146,6 +146,9 @@ final readonly class DoctrineEventRepository implements SearchEventsRepository, 
         $model->setEndsAt($event->endsAt());
         $model->setSellMode($event->sellMode());
 
+        // debt: an update drops every zone and reinserts it rather than diffing, so a
+        // provider resend rewrites rows that did not change. Revisit when zone counts per
+        // event stop being single digits.
         $model->clearZones();
 
         foreach ($event->zones() as $zone) {
