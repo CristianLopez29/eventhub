@@ -3,6 +3,8 @@
 parameters:
     provider_events_url: '%env(PROVIDER_EVENTS_URL)%'
     health_check_token: '%env(string:default::HEALTHCHECK_TOKEN)%'
+    docs_username: '%env(string:default::DOCS_USERNAME)%'
+    docs_password: '%env(string:default::DOCS_PASSWORD)%'
     jwt_default_ttl: 3600
     default_trusted_proxies: '172.16.0.0/12'
 
@@ -34,6 +36,19 @@ services:
     App\EventIntegration\Infrastructure\Listeners\ExceptionListener:
         tags:
             - { name: kernel.event_listener, event: kernel.exception }
+
+    App\EventIntegration\Infrastructure\Listeners\DocsAccessListener:
+        arguments:
+            $username: '%docs_username%'
+            $password: '%docs_password%'
+            $environment: '%kernel.environment%'
+        tags:
+            # Before routing and the firewall: the match is on the path, not a resolved route.
+            - { name: kernel.event_listener, event: kernel.request, priority: 300 }
+
+    App\EventIntegration\Infrastructure\Listeners\SecurityHeadersListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.response }
 
     App\EventIntegration\Infrastructure\Repositories\DoctrineEventRepository:
         public: true
