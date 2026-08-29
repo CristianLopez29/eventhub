@@ -4,34 +4,21 @@ declare(strict_types=1);
 
 namespace App\EventIntegration\Infrastructure\Controllers;
 
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
+use LogicException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
+/**
+ * Declares the route that the `json_login` firewall uses as its `check_path`.
+ *
+ * The body is never executed: the authenticator handles POST /login and answers through
+ * Lexik's success or failure handler before the request reaches a controller. Symfony
+ * still requires the path to resolve to a route, which is the only reason this class exists.
+ */
 final readonly class LoginController
 {
-    #[Route('/login', methods: ['POST'])]
-    public function __invoke(#[CurrentUser] ?UserInterface $user): JsonResponse
+    #[Route('/login', name: 'app_login', methods: ['POST'])]
+    public function __invoke(): never
     {
-        if (null === $user) {
-            return new JsonResponse(
-                [
-                    'error' => [
-                        'code' => 'INVALID_CREDENTIALS',
-                        'message' => 'Invalid credentials.',
-                    ],
-                ],
-                Response::HTTP_UNAUTHORIZED
-            );
-        }
-
-        return new JsonResponse([
-            'data' => [
-                'user' => $user->getUserIdentifier(),
-            ],
-            'error' => null,
-        ]);
+        throw new LogicException('POST /login is handled by the json_login firewall and never reaches this controller.');
     }
 }
