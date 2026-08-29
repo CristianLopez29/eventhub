@@ -1,0 +1,58 @@
+monolog:
+    channels:
+        - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
+
+when@dev:
+    monolog:
+        handlers:
+            main:
+                type: stream
+                path: "%kernel.logs_dir%/%kernel.environment%.log"
+                level: debug
+                channels: ["!event"]
+            console:
+                type: console
+                process_psr_3_messages: false
+                channels: ["!event", "!doctrine", "!console"]
+
+when@test:
+    monolog:
+        handlers:
+            main:
+                type: fingers_crossed
+                action_level: error
+                handler: nested
+                excluded_http_codes: [404, 405]
+                channels: ["!event"]
+            nested:
+                type: stream
+                path: "%kernel.logs_dir%/%kernel.environment%.log"
+                level: debug
+
+when@prod:
+    monolog:
+        handlers:
+            # One line of JSON per record, straight to the container's stderr, where Docker
+            # (json-file driver, capped in /etc/docker/daemon.json) collects it. No file, no
+            # rotation to own. nginx already writes the access log to stdout, so this stream
+            # carries application events only — the two are separate by construction.
+            #
+            # A plain stream, not fingers_crossed: this service logs useful info-level events
+            # (each provider sync's per-event outcome) that must stay visible on a run that
+            # never raises an error. Buffering until an error would drop exactly those.
+            main:
+                type: stream
+                path: php://stderr
+                level: info
+                formatter: monolog.formatter.json
+                channels: ["!event", "!doctrine", "!deprecation"]
+            console:
+                type: console
+                process_psr_3_messages: false
+                channels: ["!event", "!doctrine"]
+            deprecation:
+                type: stream
+                channels: [deprecation]
+                path: php://stderr
+                level: warning
+                formatter: monolog.formatter.json
