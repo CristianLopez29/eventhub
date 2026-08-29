@@ -7,22 +7,21 @@ namespace App\Tests\EventIntegration\Acceptance;
 use App\EventIntegration\Domain\Repositories\SaveEventRepository;
 use App\EventIntegration\Infrastructure\Cache\RedisCachedEventRepository;
 use App\Tests\EventIntegration\Builders\EventBuilder;
+use App\Tests\EventIntegration\Support\CleansUpItsOwnData;
 use DateTimeImmutable;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class SearchEventsAcceptanceTest extends WebTestCase
 {
-    private function cleanDatabase(): void
+    use CleansUpItsOwnData;
+
+    protected function tearDown(): void
     {
-        $entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
-        $connection = $entityManager->getConnection();
+        if (static::$booted) {
+            $this->removeRowsCreatedByThisTest();
+        }
 
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
-        $connection->executeStatement('TRUNCATE TABLE zones');
-        $connection->executeStatement('TRUNCATE TABLE events');
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
-
-        $entityManager->clear();
+        parent::tearDown();
     }
 
     private function clearCache(): void
@@ -33,6 +32,8 @@ final class SearchEventsAcceptanceTest extends WebTestCase
 
     private function authenticateClient(\Symfony\Bundle\FrameworkBundle\KernelBrowser $client): void
     {
+        $this->rememberExistingRows();
+
         $entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
         $connection = $entityManager->getConnection();
 
@@ -61,7 +62,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     public function test_should_return_401_in_the_envelope_when_token_missing(): void
     {
         $client = static::createClient();
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $client->request('GET', '/events?starts_at=2024-06-01T00:00:00&ends_at=2024-06-30T23:59:59');
@@ -160,7 +161,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     {
         $client = static::createClient();
         $this->authenticateClient($client);
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $repository = self::getContainer()->get(SaveEventRepository::class);
@@ -203,7 +204,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     {
         $client = static::createClient();
         $this->authenticateClient($client);
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $client->request('GET', '/events?starts_at=2025-01-01T00:00:00&ends_at=2025-12-31T23:59:59');
@@ -224,7 +225,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     {
         $client = static::createClient();
         $this->authenticateClient($client);
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $client->request('GET', '/events?ends_at=2024-06-30T23:59:59');
@@ -243,7 +244,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     {
         $client = static::createClient();
         $this->authenticateClient($client);
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $client->request('GET', '/events?starts_at=2024-06-01T00:00:00');
@@ -262,7 +263,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     {
         $client = static::createClient();
         $this->authenticateClient($client);
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $client->request('GET', '/events?starts_at=invalid&ends_at=2024-06-30T23:59:59');
@@ -280,7 +281,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     {
         $client = static::createClient();
         $this->authenticateClient($client);
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $client->request('GET', '/events?starts_at=2024-13-45T99:99:99&ends_at=2024-06-30T23:59:59');
@@ -342,7 +343,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     {
         $client = static::createClient();
         $this->authenticateClient($client);
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $repository = self::getContainer()->get(SaveEventRepository::class);
@@ -377,7 +378,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     {
         $client = static::createClient();
         $this->authenticateClient($client);
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $client->request('GET', '/events?starts_at=2024-06-01T00:00:00&ends_at=2024-06-30T23:59:59&page=99');
@@ -394,7 +395,7 @@ final class SearchEventsAcceptanceTest extends WebTestCase
     {
         $client = static::createClient();
         $this->authenticateClient($client);
-        $this->cleanDatabase();
+        $this->rememberExistingRows();
         $this->clearCache();
 
         $repository = self::getContainer()->get(SaveEventRepository::class);

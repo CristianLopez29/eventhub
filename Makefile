@@ -99,8 +99,8 @@ stan: ## Run static analysis with PHPStan at level 9
 audit: ## Check installed dependencies against known vulnerability advisories
 	$(PHP_CONT) composer audit
 
-load-test: ## Run stress test with k6
-	@echo "Running load test..."
+load-test: ## Run stress test with k6 (see tests/Load/README.md)
+	@echo "Running load test against the local stack..."
 	docker run --rm -i --network eventhub_default -e BASE_URL=http://nginx grafana/k6 run - < tests/Load/stress.js
 
 # --- Utilities ---
