@@ -296,11 +296,27 @@ them untouched.
 
 ### Load test
 
-`make load-test` drives `GET /events` with k6. Its `setup()` **throws** on a failed login
-rather than continuing — an earlier version authenticated with a wrong password and
-happily reported latency for 2650 consecutive 401s. Thresholds gate on "every request
-answers and none 5xx"; latency is reported, not asserted, because the local stack runs
-`APP_ENV=dev` off a bind mount. See [tests/Load/README.md](tests/Load/README.md).
+`make load-test` drives `GET /events` with k6 (`grafana/k6:latest`, v2.0.0-rc1 at the time
+of the run): 5 virtual users for 30 s after a cache-warming `setup()` that **throws** on a
+failed login rather than reporting latency for a stream of 401s. Thresholds gate on "every
+request answers and none 5xx"; latency is recorded, not asserted.
+
+**Measured locally on 2026-08-29** — Intel Core i5-11400H (6c/12t), 32 GB RAM, Windows 10 +
+Docker Desktop (WSL2), the **development** stack (`APP_ENV=dev`, profiler on, code on a
+bind mount). **Not** the production VPS, whose image runs `APP_ENV=prod` with opcache warm
+and would answer faster.
+
+```
+http_reqs .............: 2031  (64.7/s over 30s)
+http_req_failed .......: 0.00%   ✓ 0     ✗ 2031      # every request answered
+server_errors .........: 0                           # zero 5xx  ← the headline
+checks ................: 100.00% ✓ 6075  ✗ 0
+http_req_duration .....: avg=63ms  med=60ms  p(90)=77.6ms  p(95)=84.4ms  max=915ms
+```
+
+Full console output and an HTML report are committed under
+[tests/Load/results/](tests/Load/results/); regenerate them with `make load-test`. See
+[tests/Load/README.md](tests/Load/README.md) for the scenario rationale.
 
 ---
 
