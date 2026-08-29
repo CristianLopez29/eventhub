@@ -12,6 +12,7 @@
         "doctrine/orm": "^3.6",
         "lexik/jwt-authentication-bundle": "*",
         "nelmio/api-doc-bundle": "^5.10",
+        "sentry/sentry-symfony": "^5.13",
         "symfony/asset": "8.0.*",
         "symfony/console": "^8.0",
         "symfony/dotenv": "^8.0",
