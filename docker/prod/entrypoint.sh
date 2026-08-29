@@ -40,7 +40,12 @@ ensure_jwt_keys() {
 # server provides rather than baked into an image that is built once.
 php bin/console cache:clear --no-warmup
 php bin/console cache:warmup
-chown -R app:app var
+
+# Swagger UI is served from public/bundles/ (assets_mode: bundle), not a CDN. The build
+# stage runs composer with --no-scripts, so the copy happens here instead. Idempotent.
+php bin/console assets:install public --no-interaction
+
+chown -R app:app var public/bundles
 
 ensure_jwt_keys
 
