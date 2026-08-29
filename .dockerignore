@@ -1,3 +1,7 @@
+# Shared by both Dockerfiles that build from this context (this app's, and
+# docker/provider/Dockerfile). Do not add docker/provider/ here: the app's own Dockerfile
+# already strips it post-copy with `rm -rf`, but excluding it here also hides it from its
+# own Dockerfile's COPY, which breaks that build entirely.
 .git
 .github
 .claude
@@ -6,7 +10,6 @@ var/
 vendor/
 node_modules/
 tests/
-docker/provider/
 config/jwt/*.pem
 .env.local
 .env.*.local
