@@ -97,9 +97,4 @@ final class Event
     {
         return $this->sellMode === SellMode::ONLINE;
     }
-
-    public function overlapsWith(DateTimeImmutable $from, DateTimeImmutable $to): bool
-    {
-        return $this->startsAt <= $to && $this->endsAt >= $from;
-    }
 }
