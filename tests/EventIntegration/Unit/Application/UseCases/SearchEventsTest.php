@@ -38,14 +38,21 @@ final class SearchEventsTest extends TestCase
 
         $this->eventRepository
             ->expects($this->once())
-            ->method('searchByDateRange')
+            ->method('countByDateRange')
             ->with($startsAt, $endsAt)
+            ->willReturn(2);
+
+        $this->eventRepository
+            ->expects($this->once())
+            ->method('searchByDateRange')
+            ->with($startsAt, $endsAt, SearchEventsInput::DEFAULT_PER_PAGE, 0)
             ->willReturn($expectedEvents);
 
-        $result = $this->useCase->search($input);
+        $searchResult = $this->useCase->search($input);
 
-        $this->assertSame($expectedEvents, $result);
-        $this->assertCount(2, $result);
+        $this->assertSame($expectedEvents, $searchResult->events);
+        $this->assertSame(2, $searchResult->total);
+        $this->assertSame(1, $searchResult->totalPages());
     }
 
     #[Test]
@@ -57,13 +64,17 @@ final class SearchEventsTest extends TestCase
 
         $this->eventRepository
             ->expects($this->once())
-            ->method('searchByDateRange')
-            ->with($startsAt, $endsAt)
-            ->willReturn([]);
+            ->method('countByDateRange')
+            ->willReturn(0);
 
-        $result = $this->useCase->search($input);
+        $this->eventRepository
+            ->expects($this->never())
+            ->method('searchByDateRange');
 
-        $this->assertSame([], $result);
+        $searchResult = $this->useCase->search($input);
+
+        $this->assertSame([], $searchResult->events);
+        $this->assertSame(0, $searchResult->total);
     }
 
     #[Test]
@@ -75,12 +86,12 @@ final class SearchEventsTest extends TestCase
 
         $this->eventRepository
             ->expects($this->once())
-            ->method('searchByDateRange')
+            ->method('countByDateRange')
             ->with(
-                $this->callback(fn (DateTimeImmutable $dt): bool => $dt->format('Y-m-d H:i:s') === '2024-12-25 00:00:00'),
-                $this->callback(fn (DateTimeImmutable $dt): bool => $dt->format('Y-m-d H:i:s') === '2024-12-25 23:59:59')
+                $this->callback(fn (DateTimeImmutable $rangeStart): bool => $rangeStart->format('Y-m-d H:i:s') === '2024-12-25 00:00:00'),
+                $this->callback(fn (DateTimeImmutable $rangeEnd): bool => $rangeEnd->format('Y-m-d H:i:s') === '2024-12-25 23:59:59')
             )
-            ->willReturn([]);
+            ->willReturn(0);
 
         $this->useCase->search($input);
     }

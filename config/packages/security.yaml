@@ -14,6 +14,9 @@ security:
         swagger:
             pattern: ^/api/doc
             security: false
+        health:
+            pattern: ^/health
+            security: false
         login:
             pattern: ^/login
             stateless: true
@@ -29,7 +32,8 @@ security:
 
     access_control:
         - { path: ^/login, roles: PUBLIC_ACCESS }
-        - { path: ^/health, roles: PUBLIC_ACCESS }
+        - { path: ^/health$, roles: PUBLIC_ACCESS }
+        - { path: ^/health/ready$, roles: PUBLIC_ACCESS }
         - { path: ^/api/doc, roles: PUBLIC_ACCESS }
         - { path: ^/, roles: IS_AUTHENTICATED_FULLY }
 

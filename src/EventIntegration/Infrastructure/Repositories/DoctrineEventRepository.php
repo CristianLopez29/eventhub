@@ -47,28 +47,61 @@ final readonly class DoctrineEventRepository implements SearchEventsRepository, 
         return $qb->getQuery()->getOneOrNullResult() !== null;
     }
 
-    public function searchByDateRange(DateTimeImmutable $startsAt, DateTimeImmutable $endsAt): array
-    {
-        $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('e')
+    public function searchByDateRange(
+        DateTimeImmutable $startsAt,
+        DateTimeImmutable $endsAt,
+        int $limit,
+        int $offset
+    ): array {
+        // Paginating a fetch-joined collection would count zone rows, not events, so the
+        // page of ids is resolved first and the zones are fetch-joined onto it afterwards.
+        $pagedIds = $this->entityManager->createQueryBuilder()
+            ->select('e.id')
             ->from(EventModel::class, 'e')
-            ->leftJoin('e.zones', 'z')
-            ->addSelect('z')
             ->where('e.startsAt <= :endsAt')
             ->andWhere('e.endsAt >= :startsAt')
             ->setParameter('startsAt', $startsAt)
             ->setParameter('endsAt', $endsAt)
-            ->orderBy('e.startsAt', 'ASC');
+            ->orderBy('e.startsAt', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->setMaxResults($limit)
+            ->setFirstResult($offset)
+            ->getQuery()
+            ->getSingleColumnResult();
 
-        /** @var EventModel[] $models */
-        $models = $qb->getQuery()->getResult();
-
-        $events = [];
-        foreach ($models as $model) {
-            $events[] = $this->reconstructEvent($model);
+        if ($pagedIds === []) {
+            return [];
         }
 
-        return $events;
+        /** @var EventModel[] $models */
+        $models = $this->entityManager->createQueryBuilder()
+            ->select('e')
+            ->from(EventModel::class, 'e')
+            ->leftJoin('e.zones', 'z')
+            ->addSelect('z')
+            ->where('e.id IN (:ids)')
+            ->setParameter('ids', $pagedIds)
+            ->orderBy('e.startsAt', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return array_map($this->reconstructEvent(...), $models);
+    }
+
+    public function countByDateRange(DateTimeImmutable $startsAt, DateTimeImmutable $endsAt): int
+    {
+        $total = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(e.id)')
+            ->from(EventModel::class, 'e')
+            ->where('e.startsAt <= :endsAt')
+            ->andWhere('e.endsAt >= :startsAt')
+            ->setParameter('startsAt', $startsAt)
+            ->setParameter('endsAt', $endsAt)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return is_numeric($total) ? (int) $total : 0;
     }
 
     public function save(Event $event): void

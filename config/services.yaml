@@ -2,6 +2,7 @@
 
 parameters:
     provider_events_url: '%env(PROVIDER_EVENTS_URL)%'
+    health_check_token: '%env(string:default::HEALTHCHECK_TOKEN)%'
 
 services:
     _defaults:
@@ -70,3 +71,11 @@ services:
     App\EventIntegration\Infrastructure\Repositories\ProviderClient:
         arguments:
             $providerUrl: '%provider_events_url%'
+
+    App\EventIntegration\Infrastructure\Controllers\ReadinessController:
+        arguments:
+            $healthCheckToken: '%health_check_token%'
+
+    App\EventIntegration\Infrastructure\Health\DependencyProbe:
+        arguments:
+            $redis: '@app.event_integration.redis_connection'
