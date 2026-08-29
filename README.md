@@ -58,8 +58,22 @@ generated values into `.env.local` and `.env.test.local`, both gitignored.
 **Default credentials** created by `make run` / `make setup`: `admin` / `secret123`.
 Create more with `bin/console app:create-user <username> <password>`.
 
-**Interactive API docs:** Swagger UI at http://localhost:8000/api/doc (public), raw
-OpenAPI at `/api/doc.json`.
+### Trying the API
+
+**Interactive docs:** Swagger UI at http://localhost:8000/api/doc, raw OpenAPI at
+`/api/doc.json`. Open locally, no credentials. Click **Authorize**, paste a token from
+`POST /login`, and every endpoint is callable from the browser. On a deployed instance the
+docs sit behind HTTP Basic auth (`DOCS_USERNAME` / `DOCS_PASSWORD`) — see
+[DEPLOY.md](DEPLOY.md).
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8000/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"secret123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
+
+curl -s "http://localhost:8000/events?starts_at=2024-01-01T00:00:00&ends_at=2024-12-31T23:59:59" \
+  -H "Authorization: Bearer $TOKEN"
+```
 
 ---
 
@@ -341,6 +355,22 @@ drop-and-reinsert of an event's zones on update.
 
 ---
 
+## Observability
+
+| Concern | How |
+|---|---|
+| **Application logs** | Monolog. In `prod`, one JSON object per line to `php://stderr` at `info`, collected by Docker's `json-file` driver. nginx writes its access log to stdout, so the two never mix |
+| **Access logs** | nginx (`/dev/stdout`) and Traefik's own access log at the edge |
+| **Unhandled errors** | Sentry, when `SENTRY_DSN` is set. Only 5xx and uncaught exceptions — a `DomainException` is a validated 4xx and is filtered out. No PII, no performance tracing |
+| **Liveness / readiness** | `GET /health` and `GET /health/ready` (§ API). Point an uptime monitor at readiness |
+| **Response headers** | `X-Content-Type-Options`, `X-Frame-Options` and a strict `Content-Security-Policy` on every response; HSTS added by Traefik at the edge |
+
+Deliberate `logger->error()` calls that never throw (a provider fetch that exhausted its
+retries, a dependency the readiness probe cannot reach) stay in the structured log rather
+than being duplicated into Sentry.
+
+---
+
 ## Deployment
 
 The production stack is a multi-stage [`Dockerfile`](Dockerfile) (nginx + php-fpm,
@@ -362,6 +392,8 @@ gotchas of running several apps on one box — are in **[DEPLOY.md](DEPLOY.md)**
 | Variable | Default | Purpose |
 |---|---|---|
 | `HEALTHCHECK_TOKEN` | *(empty)* | Gates `/health/ready`. Empty leaves it open, which is what local development wants |
+| `SENTRY_DSN` | *(empty)* | Error reporting target. Empty makes the SDK a no-op; only unhandled 5xx are sent |
+| `DOCS_USERNAME` / `DOCS_PASSWORD` | `docs` / *(empty)* | HTTP Basic credentials for `/api/doc`. Outside `dev`/`test` an empty password makes the docs answer `503` |
 | `JWT_PASSPHRASE` | — | Protects the key pair. Generated per install; regenerate keys and passphrase together |
 | `JWT_TOKEN_TTL` | `3600` | Token lifetime in seconds |
 | `TRUSTED_PROXIES` | `172.16.0.0/12` | The Docker bridge range Traefik reaches the app from |
@@ -401,10 +433,11 @@ the suite exercise malformed data, failures and schema drift on demand.
 | Cache | Redis |
 | Web | nginx + php-fpm |
 | Auth | JWT (LexikJWTAuthenticationBundle) |
-| Docs | NelmioApiDocBundle (OpenAPI from PHP attributes) |
+| Docs | NelmioApiDocBundle (OpenAPI from PHP attributes), Basic-auth gated in production |
+| Observability | Monolog (JSON to stderr in prod), Sentry for unhandled errors |
 | Testing | PHPUnit 11, k6 |
 | Static analysis | PHPStan level 9 |
-| Containers | Docker Compose, Traefik in production |
+| Containers | Docker Compose, Traefik in production (TLS, security headers, per-IP rate limit) |
 
 ---
 
