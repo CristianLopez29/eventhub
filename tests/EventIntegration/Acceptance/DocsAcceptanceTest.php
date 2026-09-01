@@ -8,7 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class DocsAcceptanceTest extends WebTestCase
 {
-    public function test_should_serve_swagger_ui_without_credentials_under_the_test_environment(): void
+    public function test_should_serve_swagger_ui_without_credentials(): void
     {
         $client = static::createClient();
 

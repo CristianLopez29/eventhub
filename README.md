@@ -61,10 +61,10 @@ Create more with `bin/console app:create-user <username> <password>`.
 ### Trying the API
 
 **Interactive docs:** Swagger UI at http://localhost:8000/api/doc, raw OpenAPI at
-`/api/doc.json`. Open locally, no credentials. Click **Authorize**, paste a token from
-`POST /login`, and every endpoint is callable from the browser. On a deployed instance the
-docs sit behind HTTP Basic auth (`DOCS_USERNAME` / `DOCS_PASSWORD`) — see
-[DEPLOY.md](DEPLOY.md).
+`/api/doc.json` — public, no credentials, on every environment including a deployed
+instance. There is nothing behind it worth gating: the endpoints still require a real JWT
+to call. Click **Authorize**, paste a token from `POST /login`, and every endpoint is
+callable from the browser.
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8000/login \
@@ -398,7 +398,6 @@ gotchas of running several apps on one box — are in **[DEPLOY.md](DEPLOY.md)**
 |---|---|---|
 | `HEALTHCHECK_TOKEN` | *(empty)* | Gates `/health/ready`. Empty leaves it open, which is what local development wants |
 | `SENTRY_DSN` | *(empty)* | Error reporting target. Empty makes the SDK a no-op; only unhandled 5xx are sent |
-| `DOCS_USERNAME` / `DOCS_PASSWORD` | `docs` / *(empty)* | HTTP Basic credentials for `/api/doc`. Outside `dev`/`test` an empty password makes the docs answer `503` |
 | `JWT_PASSPHRASE` | — | Protects the key pair. Generated per install; regenerate keys and passphrase together |
 | `JWT_TOKEN_TTL` | `3600` | Token lifetime in seconds |
 | `TRUSTED_PROXIES` | `172.16.0.0/12` | The Docker bridge range Traefik reaches the app from |
@@ -439,7 +438,7 @@ the suite exercise malformed data, failures and schema drift on demand.
 | Cache | Redis |
 | Web | nginx + php-fpm |
 | Auth | JWT (LexikJWTAuthenticationBundle) |
-| Docs | NelmioApiDocBundle (OpenAPI from PHP attributes), Basic-auth gated in production |
+| Docs | NelmioApiDocBundle (OpenAPI from PHP attributes) |
 | Observability | Monolog (JSON to stderr in prod), Sentry for unhandled errors |
 | Testing | PHPUnit 11, k6 |
 | Static analysis | PHPStan level 9 |

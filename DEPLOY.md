@@ -99,12 +99,10 @@ Fill in every `<...>` placeholder:
 ```bash
 openssl rand -hex 32        # APP_SECRET, HEALTHCHECK_TOKEN, JWT_PASSPHRASE
 openssl rand -base64 24     # DB_PASSWORD, DB_ROOT_PASSWORD, REDIS_PASSWORD
-openssl rand -base64 18     # DOCS_PASSWORD
 ```
 
 `SENTRY_DSN` is optional - paste a project DSN from sentry.io to turn on error reporting,
-or leave it blank and the SDK does nothing. `DOCS_PASSWORD` **must** be set: with `APP_ENV`
-= `prod` an empty one makes `/api/doc` answer `503` rather than opening to the world.
+or leave it blank and the SDK does nothing.
 
 `APP_DOMAIN` is what Traefik matches on. **Point its A record at the VPS before starting
 the container** - Traefik's TLS-ALPN challenge fails otherwise, and repeated failures hit
@@ -176,9 +174,8 @@ curl -sI https://$DOMAIN/health | grep -iE 'x-powered-by|strict-transport|x-fram
 # Rate limit: a burst of requests eventually gets a 429 from Traefik
 for i in $(seq 1 200); do curl -so /dev/null -w '%{http_code} ' https://$DOMAIN/health; done; echo
 
-# Docs are gated: 401 without credentials, 200 with them
+# Docs are public, same as locally
 curl -so /dev/null -w '%{http_code}\n' https://$DOMAIN/api/doc
-curl -so /dev/null -w '%{http_code}\n' -u "$DOCS_USERNAME:$DOCS_PASSWORD" https://$DOMAIN/api/doc
 
 # Arbitrary .php must not execute
 curl -so /dev/null -w '%{http_code}\n' https://$DOMAIN/index2.php   # 404
@@ -196,9 +193,10 @@ curl -s "https://$DOMAIN/events?starts_at=2024-01-01T00:00:00&ends_at=2024-12-31
 either is down, so an uptime monitor can alert on it. Point UptimeRobot at it with the
 token as a custom header.
 
-Swagger UI is at `https://$DOMAIN/api/doc`. Unlike locally, a deployed instance gates it
-with HTTP Basic auth (`DOCS_USERNAME` / `DOCS_PASSWORD`); with no password set it answers
-`503`. `/api/doc.json` is gated the same way.
+Swagger UI is at `https://$DOMAIN/api/doc`, public, same as locally — there is a portfolio
+audience for it and nothing behind it worth gating: every endpoint still requires a real
+JWT to call, so an open docs page only saves a recruiter one extra message asking for a
+link.
 
 ---
 
