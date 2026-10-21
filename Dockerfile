@@ -3,7 +3,7 @@
 # --- Stage 1: dependencies -------------------------------------------------
 # Installed against the same PHP that will run them, so a platform mismatch fails the
 # build rather than production.
-FROM php:8.4-fpm-alpine AS vendor
+FROM php:8.4.27-fpm-alpine AS vendor
 
 RUN apk add --no-cache git unzip icu-dev libzip-dev oniguruma-dev libxml2-dev \
     && docker-php-ext-configure intl \
@@ -27,7 +27,7 @@ RUN composer dump-autoload --no-dev --optimize --classmap-authoritative \
 
 
 # --- Stage 2: runtime ------------------------------------------------------
-FROM php:8.4-fpm-alpine AS runtime
+FROM php:8.4.27-fpm-alpine AS runtime
 
 RUN apk add --no-cache \
         nginx \
